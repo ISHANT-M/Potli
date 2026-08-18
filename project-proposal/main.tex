@@ -1,0 +1,259 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{xcolor}
+
+% -----------------------------------------------------
+% -----------------------------------------------------
+
+% Variable: Lab Instructor
+\makeatletter \newcommand{\BvrSetLabInstructor}[1]{%
+  \gdef\Bvr@LabInstructor{#1}}
+% default
+\newcommand{\Bvr@LabInstructor}{Dr. Nisha Thakur}
+% public accessor
+\newcommand{\BvrLabInstructorValue}{\Bvr@LabInstructor}
+\makeatother
+
+% Add subtitle
+\usepackage{titling}
+% -- Set title bold
+\pretitle{\begin{center}\bfseries\fontsize{18bp}{18bp}\selectfont}
+\makeatletter
+\newcommand{\BvrSubtitle}[1]{%
+  \posttitle{%
+    \par\end{center}
+    \begin{center}\large#1\end{center}
+    \vskip 0.5em}%
+}
+\makeatother
+
+% -----------------------------------------------------
+
+\title{POTLI: On demand Luggage storage network}
+
+\BvrSetLabInstructor{Nisha Thakur}
+
+\BvrSubtitle{%
+  Project Proposal for UCS503P  \\
+  Submitted to: \BvrLabInstructorValue \\ \bfseries
+  Thapar Institute of Engineering and Technology% 
+}
+
+\author{
+  Satyam Tiwari, CSED%
+  \thanks{Roll No: \texttt{1024030088}, %
+    Email: \texttt{stiwari1\_be24@thapar.edu}}
+  \and
+  Ishant Mehndiratta, CSED%
+  \thanks{Roll No: \texttt{1024030525}, %
+    Email: \texttt{imehndiratta\_be24@thapar.edu}}
+  \and
+  Anshaj, CSED%
+  \thanks{Roll No: \texttt{1024030494}, %
+    Email: \texttt{aanshaj\_be24@thapar.edu}}
+  \and
+  Aayush Bindal, CSED%
+  \thanks{Roll No: \texttt{1024030498}, %
+    Email: \texttt{abindal1\_be24@thapar.edu}}
+}
+
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Higher-order goal}
+This project aims to make short-distance urban travel a little less stressful
+by giving people a safe, nearby place to leave their bags whenever they don't
+want to lug them around -- whether they're killing time before a hotel
+check-in, fitting in some sightseeing between train connections, or just
+running errands across an unfamiliar city. While the broader theme is about
+smoothing out everyday urban travel and opening up a genuine extra income
+stream for small local businesses, the immediate engineering objective is to
+translate this idea into a measurable, deployable software solution.
+
+\section{Time-to-value}
+\begin{itemize}[leftmargin=0.7cm]
+    \item We will deliver meaningful increments quickly by prototyping the core booking-and-handoff workflow and validating it with a small set of real partner shops within a short iteration window.
+    \item We will prioritize fast feedback over perfection by using weekly iterations (and targeting CI-backed automation early) to reduce release friction.
+    \item Success is defined by what can be delivered and measured in the first iteration, then improved based on partner and traveler feedback.
+\end{itemize}
+
+\section{Problem Statement}
+Travelers and short-term visitors in Indian cities -- tourists between
+check-in and check-out, students home for the day, professionals in town for
+a single meeting -- regularly need somewhere safe to leave a bag for a few
+hours, but have almost nowhere reliable to turn. Common pain points include:
+\begin{itemize}[leftmargin=0.7cm]
+    \item \textbf{Scarcity:} official lockers exist only at a handful of railway stations and airports, and are frequently full, expensive, or out of service.
+    \item \textbf{Low discoverability:} even when a nearby shop or business might be willing to hold a bag, travelers have no easy way to find or trust that option.
+    \item \textbf{Trust and safety:} leaving belongings with a stranger, with no verification, receipt, or accountability, is understandably uncomfortable.
+    \item \textbf{Untapped local income:} small shop and business owners often have a spare corner, shelf, or storeroom sitting idle, with no simple way to earn from it.
+\end{itemize}
+
+\textbf{Why this matters now (contextual relevance):} as more people travel for
+work, tourism, and short visits, and as tier-2/3 cities see rising footfall
+without matching storage infrastructure, even a lightweight coordination
+layer between travelers and local businesses can noticeably reduce this
+everyday friction.
+
+\section{Proposed Solution}
+\subsection{Overview}
+Build a \textbf{web-based} ``Storage-on-Demand'' network with the following components:
+\begin{itemize}[leftmargin=0.7cm]
+    \item \textbf{Traveler discovery \& booking portal:} search nearby partner shops, see capacity/price/hours, and book a slot in advance or on the spot.
+    \item \textbf{Partner onboarding portal:} shop and business owners list their available space, set capacity, pricing, and working hours, and manage incoming bookings.
+    \item \textbf{Booking \& handoff workflow:} QR-code based check-in and check-out so both sides can verify exactly what was dropped off and what was picked up.
+    \item \textbf{Trust \& safety layer:} verified partner listings, photo confirmation at drop-off, and post-pickup ratings.
+    \item \textbf{Payments \& payouts:} the traveler pays through the platform; the partner receives their share automatically once the booking is completed.
+    \item \textbf{Admin/ops dashboard:} city-wise coverage, partner performance, and revenue summaries.
+\end{itemize}
+
+\subsection{Core workflow}
+\begin{enumerate}[leftmargin=0.7cm]
+    \item Traveler searches for storage near a location and picks a partner and a time window.
+    \item System generates a booking ID and a QR code for that booking.
+    \item Partner scans/confirms the bag at drop-off; the bag is tagged with the booking ID.
+    \item Traveler returns within the window and the partner scans/confirms pickup.
+    \item Payment is settled and the partner's payout is credited.
+\end{enumerate}
+
+\subsection{Operational constraints for an educational, tier-2/3 setting}
+\begin{itemize}[leftmargin=0.7cm]
+    \item Keep the solution usable on low-to-mid range devices, since many partner shop owners will not have high-end smartphones.
+    \item Keep partner onboarding extremely simple -- most partners will be small shopkeepers, not tech-savvy businesses.
+    \item Avoid dependence on advanced research algorithms; focus on workflow correctness, trust, and reliable handoffs.
+    \item Design for deployability using common web hosting and managed databases.
+\end{itemize}
+
+\section{Solution Approach}
+This is an engineering course project, so we focus on scalable coordination and trust-related workflow aspects rather than novel algorithm research.
+
+\subsection{Partner listing \& duplicate-signup checks}
+Duplicate/quality checks on partner listings will be heuristic-based:
+\begin{itemize}[leftmargin=0.7cm]
+    \item Normalize partner details (business name, locality/address, phone number).
+    \item Use a simple similarity measure (e.g., name + locality token overlap) to flag likely duplicate signups, without claiming any state-of-the-art matching technique.
+    \item Show flagged listings to an admin for review; never auto-approve or auto-reject a partner without a human check.
+\end{itemize}
+
+\subsection{Web architecture}
+A typical 3-tier web architecture:
+\begin{itemize}[leftmargin=0.7cm]
+    \item \textbf{Frontend:} responsive UI for two user types -- travelers (search, book, track) and partners (list space, manage bookings).
+    \item \textbf{Backend API:} authentication, location-based search, booking and handoff state transitions, payments.
+    \item \textbf{Database:} users, partners, listings, bookings, handoff logs, and transactions.
+\end{itemize}
+
+\subsection{CI/CD and fast delivery enabler}
+CI/CD will be used to:
+\begin{itemize}[leftmargin=0.7cm]
+    \item Automatically build and run tests on every change.
+    \item Produce repeatable deployment artifacts to staging.
+    \item Enable safe and frequent releases of incremental features (e.g., shipping QR-based handoff before layering on payments).
+\end{itemize}
+
+\section{Evaluation Criterion}
+We define success using measurable metrics tied to the core booking-and-handoff workflow.
+
+\subsection{Primary evaluation metric}
+\textbf{Booking Fulfillment Time (BFT):} time between a traveler starting a search and receiving a confirmed booking at a partner location.
+\begin{itemize}[leftmargin=0.7cm]
+    \item Target: median BFT $\le$ 3 minutes during the pilot window.
+    \item Attribution: measured from database timestamps (search/request vs. confirmed booking).
+\end{itemize}
+
+\subsection{Secondary evaluation metrics}
+\begin{itemize}[leftmargin=0.7cm]
+    \item \textbf{Handoff success rate:} percentage of bookings where both drop-off and pickup are confirmed without disputes.
+    \item \textbf{Partner utilization:} percentage of a partner's listed capacity actually booked per week.
+    \item \textbf{Partner payout turnaround:} time between booking completion and payout being credited.
+    \item \textbf{Traveler satisfaction:} post-pickup 1--5 rating on ease and trust.
+    \item \textbf{Reliability:} platform availability for search/booking during business hours (e.g., $\ge$ 99\% uptime in pilot).
+\end{itemize}
+
+\subsection{Pilot validation plan}
+\begin{itemize}[leftmargin=0.7cm]
+    \item Recruit 8--12 partner shops/businesses in a chosen locality (e.g., near a railway station or a busy market) and 15--20 traveler participants.
+    \item Compare metrics against a baseline of no formal storage option (carrying bags around or informal arrangements), collected via short interviews before the pilot.
+\end{itemize}
+
+\section{Scalability}
+The proposition should scale in both theoretical and practical senses.
+
+\begin{enumerate}[leftmargin=0.7cm]
+    \item \textbf{Scalable (theoretically):} The system should support growth in listings, bookings, and concurrent searches by:
+    \begin{itemize}[leftmargin=0.7cm]
+        \item decoupling components (frontend/backend),
+        \item using geo-indexed queries for ``storage near me'' search and pagination for results,
+        \item using stateless API design.
+    \end{itemize}
+    
+    \item \textbf{Operationally deployable (practically):} The system should run on common web hosting:
+    \begin{itemize}[leftmargin=0.7cm]
+        \item managed database,
+        \item containerized or platform-hosted deployment,
+        \item CI/CD pipeline for staging/production.
+    \end{itemize}
+\end{enumerate}
+
+\section{Engine availability heuristic}
+A mature set of ``engines'' (tooling/services) is available to implement this as a web-based project:
+\begin{itemize}[leftmargin=0.7cm]
+    \item Web framework for REST APIs and responsive pages.
+    \item Managed database with geospatial/location query support.
+    \item Authentication approach (token-based or session-based) for both traveler and partner accounts.
+    \item QR-code generation/scanning library for handoff verification.
+    \item Payment gateway integration (e.g., UPI-based) for bookings and partner payouts.
+    \item Notification channel (in-app, optionally SMS/WhatsApp) for booking confirmations and reminders.
+    \item Test framework for unit/integration tests.
+    \item CI runner and staging deployment target.
+\end{itemize}
+We will use these mature components to focus on workflow design, trust, and measurement rather than inventing new infrastructure.
+
+\section{Project scope and deliverables}
+\subsection{Initial deliverable}
+\begin{itemize}[leftmargin=0.7cm]
+    \item Traveler search + booking flow for nearby partners
+    \item Partner onboarding + listing management (capacity, price, hours)
+    \item QR-based drop-off and pickup handoff workflow
+    \item Booking status tracking (Booked $\rightarrow$ Dropped $\rightarrow$ Stored $\rightarrow$ Picked up)
+    \item Basic logging and timestamps for BFT measurement
+    \item CI: build + backend unit tests + linting
+    \item CD to staging with a single command or pipeline job
+\end{itemize}
+
+\subsection{Subsequent deliverables}
+\begin{itemize}[leftmargin=0.7cm]
+    \item Payments integration and automated partner payouts
+    \item Ratings and reviews for partners
+    \item Duplicate/quality checks for new partner listings
+    \item Admin dashboard for coverage, utilization, and revenue metrics
+    \item SMS/WhatsApp notifications for booking confirmations and reminders
+    \item Improved geo-search, filtering, and indexed queries for scale readiness
+\end{itemize}
+
+\section{Risks and mitigations}
+\begin{itemize}[leftmargin=0.7cm]
+    \item \textbf{Trust and safety of stored items:} photo confirmation at drop-off/pickup, clear liability terms, verified partner onboarding, and an optional insurance add-on in a later iteration.
+    \item \textbf{Partner adoption:} keep onboarding and day-to-day use extremely simple, minimize the steps needed to confirm a drop-off/pickup, and offer clear, transparent payout terms.
+    \item \textbf{Payment/logistics risk:} hold payment until pickup is confirmed (escrow-style), rather than releasing it immediately at drop-off.
+    \item \textbf{Evaluation measurement ambiguity:} instrument timestamps and define clear booking/handoff states before development begins.
+    \item \textbf{Operational issues in pilot:} use a staging environment early and ensure CI/CD produces repeatable deployments.
+\end{itemize}
+
+\section{Summary}
+This project proposes POTLI, a deployable web platform that connects
+travelers who need short-term luggage storage with local shop and business
+owners who have spare space to offer. It meets the course criteria by
+emphasizing time-to-value through rapid iterations, implementing CI/CD to
+support frequent safe releases, and using measurable evaluation criteria
+(especially booking fulfillment time). It stays focused on engineering
+workflow, trust, and scalability readiness rather than research-driven
+novelty, while creating a genuine extra income opportunity for local
+partners.
+
+\end{document}
