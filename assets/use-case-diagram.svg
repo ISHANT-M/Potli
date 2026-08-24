@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" role="img" aria-labelledby="title description">
+  <title id="title">POTLI system use-case diagram</title>
+  <desc id="description">Use cases for travelers, storage partners, and administrators in the POTLI luggage storage platform.</desc>
+
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#000000" flood-opacity="0.16"/>
+    </filter>
+    <style>
+      .system-title { font: 600 19px 'Segoe UI', Arial, sans-serif; fill: #d7dcdb; text-anchor: middle; letter-spacing: 0.5px; }
+      .actor-title { font: 600 18px 'Segoe UI', Arial, sans-serif; fill: #dce2e1; text-anchor: middle; }
+      .actor-detail { font: 500 14px 'Segoe UI', Arial, sans-serif; fill: #aeb8b6; text-anchor: middle; }
+      .case-text { font: 500 16px 'Segoe UI', Arial, sans-serif; fill: #d8dedd; text-anchor: middle; }
+      .case-detail { font: 500 14px 'Segoe UI', Arial, sans-serif; fill: #c7cecc; text-anchor: middle; }
+      .association { fill: none; stroke: #bac2c1; stroke-width: 1.5; }
+      .dependency { fill: none; stroke: #aeb7b5; stroke-width: 1.5; stroke-dasharray: 4 5; }
+      .include-text { font: 500 13px 'Segoe UI', Arial, sans-serif; fill: #d4d9d8; text-anchor: middle; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#aeb7b5"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f7f8f7"/>
+
+  <!-- System boundary -->
+  <rect x="300" y="35" width="1000" height="1130" fill="#14191a" stroke="#899391" stroke-width="2" stroke-dasharray="8 7"/>
+  <text x="800" y="70" class="system-title">Potli System Boundary</text>
+
+  <!-- Associations are kept in the margins to avoid crossing use cases. -->
+  <g aria-hidden="true">
+    <!-- Traveler -->
+    <path class="association" d="M270 377 C315 377 330 129 380 129"/>
+    <path class="association" d="M270 377 C315 377 330 249 380 249"/>
+    <path class="association" d="M270 377 C315 377 330 369 380 369"/>
+    <path class="association" d="M270 377 C315 377 330 489 380 489"/>
+    <path class="association" d="M270 377 C315 377 330 609 380 609"/>
+    <path class="association" d="M270 377 C315 377 330 729 380 729"/>
+
+    <!-- Storage partner -->
+    <path class="dependency" d="M270 875 C315 875 330 729 380 729"/>
+    <path class="association" d="M270 875 C315 875 330 829 380 829"/>
+    <path class="association" d="M270 875 C315 875 330 929 380 929"/>
+    <path class="association" d="M270 875 C315 875 330 1029 380 1029"/>
+    <path class="association" d="M270 875 C315 875 330 1117 380 1117"/>
+
+    <!-- Administrator -->
+    <path class="association" d="M1330 955 C1295 955 1260 789 1220 789"/>
+    <path class="association" d="M1330 955 C1295 955 1260 1029 1220 1029"/>
+    <path class="association" d="M1330 955 C1295 955 1260 1117 1220 1117"/>
+  </g>
+
+  <!-- Actors -->
+  <g filter="url(#shadow)">
+    <rect x="25" y="332" width="245" height="90" fill="#14282e" stroke="#2f9cf4" stroke-width="3"/>
+    <text x="147.5" y="371" class="actor-title">Customer / Traveler</text>
+    <text x="147.5" y="397" class="actor-detail">Find, book, and retrieve</text>
+
+    <rect x="25" y="827" width="245" height="96" fill="#2d240e" stroke="#dc7a00" stroke-width="3"/>
+    <text x="147.5" y="867" class="actor-title">Storage Partner</text>
+    <text x="147.5" y="894" class="actor-detail">Shop / Hotel</text>
+
+    <rect x="1330" y="907" width="245" height="96" fill="#302235" stroke="#cf6ad8" stroke-width="3"/>
+    <text x="1452.5" y="947" class="actor-title">Admin / Super User</text>
+    <text x="1452.5" y="974" class="actor-detail">Platform operations</text>
+  </g>
+
+  <!-- Traveler use cases -->
+  <g>
+    <rect x="380" y="92" width="390" height="74" rx="37" fill="#202728" stroke="#2f9cf4" stroke-width="2"/>
+    <text x="575" y="123" class="case-text">Search Storage Locations</text>
+    <text x="575" y="147" class="case-detail">City Filter / Map View</text>
+
+    <rect x="380" y="216" width="390" height="66" rx="33" fill="#202728" stroke="#2f9cf4" stroke-width="2"/>
+    <text x="575" y="255" class="case-text">Book Storage Slot</text>
+
+    <rect x="380" y="336" width="390" height="66" rx="33" fill="#202728" stroke="#2f9cf4" stroke-width="2"/>
+    <text x="575" y="375" class="case-text">Present Check-in QR / OTP</text>
+
+    <rect x="380" y="456" width="390" height="66" rx="33" fill="#202728" stroke="#2f9cf4" stroke-width="2"/>
+    <text x="575" y="495" class="case-text">View Stored Luggage Photos</text>
+
+    <rect x="380" y="576" width="390" height="66" rx="33" fill="#202728" stroke="#2f9cf4" stroke-width="2"/>
+    <text x="575" y="615" class="case-text">Present Retrieval QR / OTP</text>
+
+    <rect x="380" y="692" width="390" height="74" rx="37" fill="#202728" stroke="#2f9cf4" stroke-width="2"/>
+    <text x="575" y="723" class="case-text">Pay Partner Directly</text>
+    <text x="575" y="747" class="case-detail">Cash / UPI</text>
+  </g>
+
+  <!-- Storage partner use cases -->
+  <g>
+    <rect x="380" y="796" width="390" height="66" rx="33" fill="#211f18" stroke="#dc7a00" stroke-width="2"/>
+    <text x="575" y="835" class="case-text">Register Business Profile</text>
+
+    <rect x="380" y="892" width="390" height="74" rx="37" fill="#211f18" stroke="#dc7a00" stroke-width="2"/>
+    <text x="575" y="923" class="case-text">Validate Check-in</text>
+    <text x="575" y="947" class="case-detail">Scan QR / Enter OTP</text>
+
+    <rect x="380" y="996" width="390" height="66" rx="33" fill="#211f18" stroke="#dc7a00" stroke-width="2"/>
+    <text x="575" y="1035" class="case-text">Verify Retrieval and Match Luggage</text>
+
+    <rect x="380" y="1080" width="390" height="74" rx="37" fill="#211f18" stroke="#dc7a00" stroke-width="2"/>
+    <text x="575" y="1111" class="case-text">View Store Dashboard</text>
+    <text x="575" y="1135" class="case-detail">Stats and 15% Platform Dues</text>
+
+    <rect x="820" y="892" width="400" height="74" rx="37" fill="#211f18" stroke="#dc7a00" stroke-width="2"/>
+    <text x="1020" y="923" class="case-text">Capture and Upload</text>
+    <text x="1020" y="947" class="case-detail">Luggage Photos</text>
+  </g>
+
+  <!-- Administrator use cases -->
+  <g>
+    <rect x="820" y="756" width="400" height="66" rx="33" fill="#282129" stroke="#cf6ad8" stroke-width="2"/>
+    <text x="1020" y="795" class="case-text">Verify Credibility and Approve Shop</text>
+
+    <rect x="820" y="996" width="400" height="66" rx="33" fill="#282129" stroke="#cf6ad8" stroke-width="2"/>
+    <text x="1020" y="1035" class="case-text">Monitor Global Bookings and Analytics</text>
+
+    <rect x="820" y="1084" width="400" height="66" rx="33" fill="#282129" stroke="#cf6ad8" stroke-width="2"/>
+    <text x="1020" y="1123" class="case-text">Track and Audit 15% Platform Fees</text>
+  </g>
+
+  <!-- Include relationship -->
+  <path class="dependency" d="M770 929 H820" marker-end="url(#arrow)"/>
+  <rect x="774" y="902" width="72" height="20" fill="#3a4041"/>
+  <text x="810" y="917" class="include-text">includes</text>
+</svg>

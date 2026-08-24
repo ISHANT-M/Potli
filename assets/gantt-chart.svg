@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" role="img" aria-labelledby="title description">
+  <title id="title">POTLI project development timeline</title>
+  <desc id="description">A Gantt chart showing nine development tasks scheduled from September through mid-November.</desc>
+
+  <defs>
+    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#092510" flood-opacity="0.12"/>
+    </filter>
+    <linearGradient id="header-gradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0a3217"/>
+      <stop offset="1" stop-color="#1d5730"/>
+    </linearGradient>
+    <linearGradient id="planning-gradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#285d39"/>
+      <stop offset="1" stop-color="#43865a"/>
+    </linearGradient>
+    <linearGradient id="foundation-gradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#08777e"/>
+      <stop offset="1" stop-color="#19a0a6"/>
+    </linearGradient>
+    <linearGradient id="build-gradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#175992"/>
+      <stop offset="1" stop-color="#2e83c5"/>
+    </linearGradient>
+    <linearGradient id="operations-gradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a95312"/>
+      <stop offset="1" stop-color="#d8842b"/>
+    </linearGradient>
+    <linearGradient id="release-gradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#68417c"/>
+      <stop offset="1" stop-color="#9763ad"/>
+    </linearGradient>
+    <style>
+      .title { font: 800 32px 'Segoe UI', Arial, sans-serif; fill: #0a2912; text-anchor: middle; letter-spacing: 1.8px; }
+      .subtitle { font: 600 14px 'Segoe UI', Arial, sans-serif; fill: #4a6651; text-anchor: middle; letter-spacing: 2px; }
+      .column-title { font: 700 15px 'Segoe UI', Arial, sans-serif; fill: #ffffff; letter-spacing: 0.8px; }
+      .month { font: 700 14px 'Segoe UI', Arial, sans-serif; fill: #ffffff; text-anchor: middle; letter-spacing: 1px; }
+      .week { font: 700 12px 'Segoe UI', Arial, sans-serif; fill: #49604f; text-anchor: middle; }
+      .task-number { font: 700 11px 'Segoe UI', Arial, sans-serif; fill: #62806a; text-anchor: middle; }
+      .task { font: 600 14px 'Segoe UI', Arial, sans-serif; fill: #18351f; }
+      .legend { font: 600 12px 'Segoe UI', Arial, sans-serif; fill: #405747; }
+      .grid { stroke: #dfe9e2; stroke-width: 1; }
+      .month-divider { stroke: #aac0b0; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="900" fill="#f2f6f3"/>
+  <circle cx="85" cy="76" r="120" fill="#dfece2"/>
+  <circle cx="1340" cy="840" r="170" fill="#e1ede4"/>
+  <path d="M0 0 H310 L145 112 H0 Z" fill="#0c3818" opacity="0.96"/>
+  <path d="M1400 900 H1080 L1250 788 H1400 Z" fill="#0c3818" opacity="0.96"/>
+
+  <text x="700" y="54" class="title">POTLI PROJECT TIMELINE</text>
+  <text x="700" y="82" class="subtitle">SEPTEMBER TO MID-NOVEMBER</text>
+
+  <rect x="50" y="116" width="1300" height="726" rx="16" fill="#ffffff" filter="url(#card-shadow)"/>
+  <rect x="70" y="142" width="1240" height="636" rx="10" fill="#ffffff" stroke="#d9e5dc" stroke-width="1.5"/>
+
+  <!-- Task and month headers -->
+  <path d="M70 152 Q70 142 80 142 H410 V230 H70 Z" fill="url(#header-gradient)"/>
+  <text x="100" y="193" class="column-title">WORKSTREAM</text>
+  <text x="100" y="216" class="column-title" opacity="0.7" font-size="11">9 PLANNED ACTIVITIES</text>
+
+  <rect x="410" y="142" width="360" height="46" fill="#164725"/>
+  <rect x="770" y="142" width="360" height="46" fill="#205630"/>
+  <path d="M1130 142 H1300 Q1310 142 1310 152 V188 H1130 Z" fill="#2b6640"/>
+  <text x="590" y="171" class="month">SEPTEMBER</text>
+  <text x="950" y="171" class="month">OCTOBER</text>
+  <text x="1220" y="171" class="month">NOVEMBER</text>
+
+  <!-- Week headers -->
+  <g>
+    <rect x="410" y="188" width="900" height="42" fill="#edf4ef"/>
+    <text x="455" y="214" class="week">W1</text>
+    <text x="545" y="214" class="week">W2</text>
+    <text x="635" y="214" class="week">W3</text>
+    <text x="725" y="214" class="week">W4</text>
+    <text x="815" y="214" class="week">W1</text>
+    <text x="905" y="214" class="week">W2</text>
+    <text x="995" y="214" class="week">W3</text>
+    <text x="1085" y="214" class="week">W4</text>
+    <text x="1175" y="214" class="week">W1</text>
+    <text x="1265" y="214" class="week">W2</text>
+  </g>
+
+  <!-- Alternating task rows -->
+  <rect x="70" y="230" width="1240" height="60" fill="#ffffff"/>
+  <rect x="70" y="290" width="1240" height="60" fill="#f7faf8"/>
+  <rect x="70" y="350" width="1240" height="60" fill="#ffffff"/>
+  <rect x="70" y="410" width="1240" height="60" fill="#f7faf8"/>
+  <rect x="70" y="470" width="1240" height="60" fill="#ffffff"/>
+  <rect x="70" y="530" width="1240" height="60" fill="#f7faf8"/>
+  <rect x="70" y="590" width="1240" height="60" fill="#ffffff"/>
+  <rect x="70" y="650" width="1240" height="60" fill="#f7faf8"/>
+  <rect x="70" y="710" width="1240" height="68" fill="#ffffff"/>
+
+  <!-- Grid -->
+  <g aria-hidden="true">
+    <line x1="410" y1="188" x2="410" y2="778" class="month-divider"/>
+    <line x1="500" y1="188" x2="500" y2="778" class="grid"/>
+    <line x1="590" y1="188" x2="590" y2="778" class="grid"/>
+    <line x1="680" y1="188" x2="680" y2="778" class="grid"/>
+    <line x1="770" y1="142" x2="770" y2="778" class="month-divider"/>
+    <line x1="860" y1="188" x2="860" y2="778" class="grid"/>
+    <line x1="950" y1="188" x2="950" y2="778" class="grid"/>
+    <line x1="1040" y1="188" x2="1040" y2="778" class="grid"/>
+    <line x1="1130" y1="142" x2="1130" y2="778" class="month-divider"/>
+    <line x1="1220" y1="188" x2="1220" y2="778" class="grid"/>
+    <line x1="1310" y1="188" x2="1310" y2="778" class="month-divider"/>
+
+    <line x1="70" y1="290" x2="1310" y2="290" class="grid"/>
+    <line x1="70" y1="350" x2="1310" y2="350" class="grid"/>
+    <line x1="70" y1="410" x2="1310" y2="410" class="grid"/>
+    <line x1="70" y1="470" x2="1310" y2="470" class="grid"/>
+    <line x1="70" y1="530" x2="1310" y2="530" class="grid"/>
+    <line x1="70" y1="590" x2="1310" y2="590" class="grid"/>
+    <line x1="70" y1="650" x2="1310" y2="650" class="grid"/>
+    <line x1="70" y1="710" x2="1310" y2="710" class="grid"/>
+  </g>
+
+  <!-- Task labels -->
+  <g>
+    <circle cx="100" cy="260" r="16" fill="#e4efe7"/><text x="100" y="264" class="task-number">01</text>
+    <text x="130" y="265" class="task">Requirement and Scope Analysis</text>
+
+    <circle cx="100" cy="320" r="16" fill="#e4efe7"/><text x="100" y="324" class="task-number">02</text>
+    <text x="130" y="325" class="task">DB Schema and Role-Based Auth</text>
+
+    <circle cx="100" cy="380" r="16" fill="#e4efe7"/><text x="100" y="384" class="task-number">03</text>
+    <text x="130" y="385" class="task">Map Discovery and Store UI</text>
+
+    <circle cx="100" cy="440" r="16" fill="#e4efe7"/><text x="100" y="444" class="task-number">04</text>
+    <text x="130" y="445" class="task">Booking and Dynamic QR/OTP</text>
+
+    <circle cx="100" cy="500" r="16" fill="#e4efe7"/><text x="100" y="504" class="task-number">05</text>
+    <text x="130" y="505" class="task">Camera Scan and S3 Image Upload</text>
+
+    <circle cx="100" cy="560" r="16" fill="#e4efe7"/><text x="100" y="564" class="task-number">06</text>
+    <text x="130" y="565" class="task">Partner Portal and 15% Ledger</text>
+
+    <circle cx="100" cy="620" r="16" fill="#e4efe7"/><text x="100" y="624" class="task-number">07</text>
+    <text x="130" y="625" class="task">Admin Approval and Analytics</text>
+
+    <circle cx="100" cy="680" r="16" fill="#e4efe7"/><text x="100" y="684" class="task-number">08</text>
+    <text x="130" y="685" class="task">Integration and Edge-Case Testing</text>
+
+    <circle cx="100" cy="744" r="16" fill="#e4efe7"/><text x="100" y="748" class="task-number">09</text>
+    <text x="130" y="749" class="task">UAT and Mid-November Launch Demo</text>
+  </g>
+
+  <!-- Schedule bars -->
+  <g>
+    <rect x="420" y="248" width="70" height="24" rx="12" fill="url(#planning-gradient)"/>
+    <circle cx="478" cy="260" r="4" fill="#ffffff" opacity="0.9"/>
+
+    <rect x="510" y="308" width="70" height="24" rx="12" fill="url(#foundation-gradient)"/>
+    <circle cx="568" cy="320" r="4" fill="#ffffff" opacity="0.9"/>
+
+    <rect x="510" y="368" width="160" height="24" rx="12" fill="url(#build-gradient)"/>
+    <circle cx="658" cy="380" r="4" fill="#ffffff" opacity="0.9"/>
+
+    <rect x="600" y="428" width="160" height="24" rx="12" fill="url(#build-gradient)"/>
+    <circle cx="748" cy="440" r="4" fill="#ffffff" opacity="0.9"/>
+
+    <rect x="780" y="488" width="160" height="24" rx="12" fill="url(#build-gradient)"/>
+    <circle cx="928" cy="500" r="4" fill="#ffffff" opacity="0.9"/>
+
+    <rect x="870" y="548" width="160" height="24" rx="12" fill="url(#operations-gradient)"/>
+    <circle cx="1018" cy="560" r="4" fill="#ffffff" opacity="0.9"/>
+
+    <rect x="960" y="608" width="160" height="24" rx="12" fill="url(#operations-gradient)"/>
+    <circle cx="1108" cy="620" r="4" fill="#ffffff" opacity="0.9"/>
+
+    <rect x="1050" y="668" width="160" height="24" rx="12" fill="url(#release-gradient)"/>
+    <circle cx="1198" cy="680" r="4" fill="#ffffff" opacity="0.9"/>
+
+    <rect x="1140" y="732" width="160" height="24" rx="12" fill="url(#release-gradient)"/>
+    <circle cx="1288" cy="744" r="4" fill="#ffffff" opacity="0.9"/>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(108 811)">
+    <circle cx="0" cy="0" r="6" fill="#43865a"/><text x="14" y="4" class="legend">Planning</text>
+    <circle cx="145" cy="0" r="6" fill="#19a0a6"/><text x="159" y="4" class="legend">Foundation</text>
+    <circle cx="310" cy="0" r="6" fill="#2e83c5"/><text x="324" y="4" class="legend">Core build</text>
+    <circle cx="460" cy="0" r="6" fill="#d8842b"/><text x="474" y="4" class="legend">Operations</text>
+    <circle cx="630" cy="0" r="6" fill="#9763ad"/><text x="644" y="4" class="legend">Validation and launch</text>
+  </g>
+</svg>
