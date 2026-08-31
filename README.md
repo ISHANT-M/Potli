@@ -55,6 +55,14 @@ The diagram below shows the planned interactions between travelers, storage part
   <img src="assets/use-case-diagram.svg" alt="POTLI use-case diagram showing traveler, storage partner, and administrator interactions" width="100%">
 </p>
 
+## Activity diagram
+
+The activity diagram details the end-to-end storage workflow, including partner approval, booking, QR/OTP check-in, luggage verification, pickup, and booking completion.
+
+<p align="center">
+  <img src="assets/activity-diagram.svg" alt="POTLI activity diagram showing the customer, platform, storage partner, and administrator workflow" width="100%">
+</p>
+
 ## Solution architecture
 
 POTLI is planned as a responsive three-tier web application:
@@ -94,6 +102,7 @@ POTLI is currently in the **planning and design phase**. The proposal, initial s
 - [Project proposal (PDF)](project-proposal/main.pdf)
 - [Project proposal source (LaTeX)](project-proposal/main.tex)
 - [Use-case diagram](assets/use-case-diagram.svg)
+- [Activity diagram](assets/activity-diagram.svg)
 - [Gantt chart](assets/gantt-chart.svg)
 
 ## Team
