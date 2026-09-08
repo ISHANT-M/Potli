@@ -35,7 +35,9 @@ All three levels follow the approved Mermaid sources
   Level 1 boundary flow of process 3.0 reappears at Level 2. In Level 2 the
   sibling process 4.0 (PAY) is shown as a circle since it is Level 1's P4.
 - Editable sources: `assets/dfd-level-{0,1,2}.mmd` (Mermaid, rendered with
-  the Mermaid CLI to SVG and 2x PNG). One deliberate addition to the Level 1
+  the Mermaid CLI to SVG and 2x PNG), each with a `assets/dfd-level-{0,1,2}.drawio`
+  equivalent converted via draw.io's Mermaid import for editing in draw.io.
+  One deliberate addition to the Level 1
   source keeps balancing: `P4 --> Payout and earnings information --> P`,
   realizing Level 0's S → P "earnings information" (no payout path existed).
   Level 2 reads/updates D2 (availability) as a refinement of the booking
