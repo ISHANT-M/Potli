@@ -1,0 +1,19 @@
+flowchart LR
+    T[Traveler]
+    P[Storage Partner]
+    A[Administrator]
+    G[Payment Gateway]
+
+    S((0. POTLI<br/>Luggage Storage System))
+
+    T -->|Registration, search and booking details| S
+    S -->|Storage options, booking confirmation and status| T
+
+    P -->|Business details, availability and handoff updates| S
+    S -->|Booking details, verification and earnings information| P
+
+    A -->|Management and approval details| S
+    S -->|Reports, user details and dispute information| A
+
+    S -->|Payment and refund requests| G
+    G -->|Payment and refund status| S

@@ -21,10 +21,7 @@ Traveler 👤" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeC
 Gateway (UPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=13;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry x="450" y="1120" width="160" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="NS" value="Notification
-Service" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=13;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="850" y="690" width="170" height="80" as="geometry" />
-        </mxCell>
+        
         <mxCell id="p1" value="1.0
 Account &amp; Partner
 Onboarding" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontSize=12;" vertex="1" parent="1">
@@ -155,34 +152,17 @@ Reviews" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#
           </mxGeometry>
         </mxCell>
         <mxCell id="e15" value="payment authorization,
-settlement &amp; payout instruction" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;startArrow=none;exitX=0.3;exitY=1;entryX=0.7;entryY=0;" edge="1" parent="1" source="p5" target="PG">
+settlement, payout &amp; refund instruction" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;startArrow=none;exitX=0.3;exitY=1;entryX=0.7;entryY=0;" edge="1" parent="1" source="p5" target="PG">
           <mxGeometry relative="1" as="geometry">
           </mxGeometry>
         </mxCell>
-        <mxCell id="e16" value="payment confirmation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;startArrow=none;exitX=0.7;exitY=0;entryX=0.3;entryY=1;" edge="1" parent="1" source="PG" target="p5">
+        <mxCell id="e16" value="payment and refund status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;startArrow=none;exitX=0.7;exitY=0;entryX=0.3;entryY=1;" edge="1" parent="1" source="PG" target="p5">
           <mxGeometry relative="1" as="geometry">
           </mxGeometry>
         </mxCell>
-        <mxCell id="e17" value="notification request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;startArrow=none;exitX=1;exitY=0.7;entryX=0;entryY=0.3;" edge="1" parent="1" source="p3" target="NS">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="735" y="599" />
-              <mxPoint x="735" y="724" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e18" value="notification request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;startArrow=none;exitX=1;exitY=0.35;entryX=0;entryY=0.7;" edge="1" parent="1" source="p4" target="NS">
-          <mxGeometry relative="1" as="geometry">
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="e19" value="delivery status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;startArrow=none;exitX=0.5;exitY=0;entryX=0.5;entryY=0;" edge="1" parent="1" source="NS" target="p3">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="935" y="500" />
-              <mxPoint x="535" y="500" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
+        
+        
+        
         <mxCell id="s1" value="user &amp; partner records" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=11;endArrow=block;startArrow=none;exitX=1;exitY=0.8;entryX=0.5;entryY=1;" edge="1" parent="1" source="p1" target="d1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
@@ -267,6 +247,14 @@ settlement &amp; payout instruction" style="edgeStyle=orthogonalEdgeStyle;rounde
             <Array as="points">
               <mxPoint x="780" y="734" />
               <mxPoint x="780" y="159" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e20" value="traveler registration" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;;fontSize=11;endArrow=block;startArrow=none;exitX=0.8;exitY=0;entryX=0.5;entryY=0;" edge="1" parent="1" source="T" target="p1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="150" y="35" />
+              <mxPoint x="535" y="35" />
             </Array>
           </mxGeometry>
         </mxCell>

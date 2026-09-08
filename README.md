@@ -65,7 +65,7 @@ The activity diagram details the end-to-end storage workflow, including partner 
 
 ## Data flow diagrams
 
-The data flow diagrams model the designed system from context (Level 0) through system decomposition (Level 1) to the detailed booking and luggage handoff workflow (Level 2), with numbered processes, named data flows, and consistent data stores. See [Data Flow Diagrams](docs/data-flow-diagrams.md) for the explanation and data dictionary.
+The data flow diagrams model the designed system from context (Level 0, Mermaid) through system decomposition (Level 1, draw.io) to the detailed booking and luggage handoff workflow (Level 2, draw.io), with numbered processes, named data flows, and consistent data stores. See [Data Flow Diagrams](docs/data-flow-diagrams.md) for the explanation and data dictionary.
 
 <p align="center">
   <img src="assets/dfd-level-0.svg" alt="POTLI Level 0 context diagram showing the system and its external entities" width="100%">
