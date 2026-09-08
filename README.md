@@ -63,6 +63,22 @@ The activity diagram details the end-to-end storage workflow, including partner 
   <img src="assets/activity-diagram.svg" alt="POTLI activity diagram showing the customer, platform, storage partner, and administrator workflow" width="100%">
 </p>
 
+## Data flow diagrams
+
+The data flow diagrams model the designed system from context (Level 0) through system decomposition (Level 1) to the detailed booking and luggage handoff workflow (Level 2), with numbered processes, named data flows, and consistent data stores. See [Data Flow Diagrams](docs/data-flow-diagrams.md) for the explanation and data dictionary.
+
+<p align="center">
+  <img src="assets/dfd-level-0.svg" alt="POTLI Level 0 context diagram showing the system and its external entities" width="100%">
+</p>
+
+<p align="center">
+  <img src="assets/dfd-level-1.svg" alt="POTLI Level 1 diagram showing the major processes and data stores" width="100%">
+</p>
+
+<p align="center">
+  <img src="assets/dfd-level-2.svg" alt="POTLI Level 2 diagram detailing the booking and luggage handoff subprocesses" width="100%">
+</p>
+
 ## Solution architecture
 
 POTLI is planned as a responsive three-tier web application:
@@ -103,6 +119,7 @@ POTLI is currently in the **planning and design phase**. The proposal, initial s
 - [Project proposal source (LaTeX)](project-proposal/main.tex)
 - [Use-case diagram](assets/use-case-diagram.svg)
 - [Activity diagram](assets/activity-diagram.svg)
+- [Data flow diagrams](docs/data-flow-diagrams.md)
 - [Gantt chart](assets/gantt-chart.svg)
 
 ## Team
