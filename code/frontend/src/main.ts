@@ -1,5 +1,32 @@
 import './styles.css';
 
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+const API_V1 = `${API_BASE}/api/v1`;
+
+interface SessionUser {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'traveler' | 'storage_partner' | 'admin';
+}
+
+function getSession(): { token: string; user: SessionUser } | null {
+  try {
+    const raw = localStorage.getItem('potli_session');
+    return raw ? (JSON.parse(raw) as { token: string; user: SessionUser }) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setSession(token: string, user: SessionUser): void {
+  localStorage.setItem('potli_session', JSON.stringify({ token, user }));
+}
+
+function clearSession(): void {
+  localStorage.removeItem('potli_session');
+}
+
 type IconName = 'arrow' | 'bag' | 'check' | 'clock' | 'location' | 'logo' | 'quote' | 'shield' | 'store';
 
 const icons: Record<IconName, string> = {
@@ -25,14 +52,18 @@ const team = [
 ];
 
 function header(): string {
+  const session = getSession();
+  const accountLink = session
+    ? `<a class="login-link" href="#dashboard">${session.user.full_name}</a><a class="button button-small" href="#dashboard">Dashboard</a>`
+    : `<a class="earn-link" href="#partners">Earn with Potli</a>
+      <a class="login-link" href="#login">Log in</a>
+      <a class="button button-small" href="#search">Find storage</a>`;
   return `<header class="site-header">
     <a class="brand" href="#home" aria-label="Potli home">
       <span class="brand-mark">${icon('logo')}</span><span>potli</span>
     </a>
     <nav class="header-actions" aria-label="Account and booking navigation">
-      <a class="earn-link" href="#partners">Earn with Potli</a>
-      <a class="login-link" href="#login">Log in</a>
-      <a class="button button-small" href="#search">Find storage</a>
+      ${accountLink}
     </nav>
   </header>`;
 }
@@ -133,6 +164,30 @@ function partnerPage(): string {
   </main>`;
 }
 
+function dashboardPage(user: SessionUser): string {
+  const roleCopy: Record<SessionUser['role'], { eyebrow: string; title: string; text: string }> = {
+    traveler: {
+      eyebrow: 'Traveller dashboard',
+      title: `Namaste, ${user.full_name}.`,
+      text: 'Search nearby storage, track bookings, and check in with QR or OTP. Booking UI lands here next.',
+    },
+    storage_partner: {
+      eyebrow: 'Partner dashboard',
+      title: `Namaste, ${user.full_name}.`,
+      text: 'Manage availability, confirm drop-offs and pickups, and track earnings. Partner operations land here next.',
+    },
+    admin: {
+      eyebrow: 'Admin dashboard',
+      title: `Namaste, ${user.full_name}.`,
+      text: 'Verify partners, monitor bookings, and handle disputes. Admin tooling lands here next.',
+    },
+  };
+  const copy = roleCopy[user.role];
+  return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><button class="button button-small" id="logout-button" type="button">Log out</button></header>
+  <main class="login-page"><section class="login-intro"><p class="eyebrow">${copy.eyebrow}</p><h1>${copy.title}</h1><p>${copy.text}</p></section>
+  <section class="login-panel"><div class="login-card"><h2>Role: ${user.role}</h2><p>${user.email}</p></div></section></main>`;
+}
+
 function footer(): string {
   return `<footer><a class="brand brand-light" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><p>Travel light. Explore freely.</p><div><a href="#safety">Safety</a><a href="#partners">Partners</a><a href="#team">Team</a></div><small>© ${new Date().getFullYear()} Potli. Student project.</small></footer>`;
 }
@@ -149,8 +204,12 @@ function wireInteractions(): void {
     password.type = show ? 'text' : 'password';
     (event.currentTarget as HTMLButtonElement).textContent = show ? 'Hide' : 'Show';
   });
-  document.querySelector<HTMLFormElement>('#login-form')?.addEventListener('submit', showBackendMessage);
-  document.querySelector<HTMLFormElement>('#partner-form')?.addEventListener('submit', showBackendMessage);
+  document.querySelector<HTMLFormElement>('#login-form')?.addEventListener('submit', handleLogin);
+  document.querySelector<HTMLFormElement>('#partner-form')?.addEventListener('submit', handlePartnerAuth);
+  document.querySelector<HTMLButtonElement>('#logout-button')?.addEventListener('click', () => {
+    clearSession();
+    window.location.hash = '#home';
+  });
 
   document.querySelectorAll<HTMLButtonElement>('.auth-tab').forEach((tab) => tab.addEventListener('click', () => {
     const isLogin = tab.dataset.authView === 'login';
@@ -171,22 +230,63 @@ function wireInteractions(): void {
   }));
 }
 
-function showBackendMessage(event: SubmitEvent): void {
+async function handleLogin(event: SubmitEvent): Promise<void> {
   event.preventDefault();
   const form = event.currentTarget as HTMLFormElement;
   const message = form.querySelector<HTMLElement>('.form-message');
-  if (message) message.textContent = 'Authentication will be connected when the Supabase backend is ready.';
+  const data = new FormData(form);
+  const submit = form.querySelector<HTMLButtonElement>('[type="submit"]');
+  if (message) message.textContent = 'Signing in...';
+  if (submit) submit.disabled = true;
+  try {
+    const res = await fetch(`${API_V1}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
+    });
+    const body = (await res.json()) as { token?: string; user?: SessionUser; error?: string };
+    if (!res.ok || !body.token || !body.user) throw new Error(body.error ?? 'Login failed.');
+    setSession(body.token, body.user);
+    window.location.hash = '#dashboard';
+  } catch (err) {
+    if (message) message.textContent = err instanceof Error ? err.message : 'Login failed.';
+  } finally {
+    if (submit) submit.disabled = false;
+  }
+}
+
+function handlePartnerAuth(event: SubmitEvent): void {
+  const form = event.currentTarget as HTMLFormElement;
+  const isLogin = document.querySelector<HTMLButtonElement>('.auth-tab[data-auth-view="login"]')?.classList.contains('active');
+  if (!isLogin) {
+    event.preventDefault();
+    const message = form.querySelector<HTMLElement>('.form-message');
+    if (message) message.textContent = 'Traveller sign-up is coming soon.';
+    return;
+  }
+  void handleLogin(event);
 }
 
 function render(): void {
   const app = document.querySelector<HTMLDivElement>('#app');
   if (!app) throw new Error('App root not found');
   document.body.classList.remove('menu-is-open');
-  app.innerHTML = window.location.hash === '#login'
+  const hash = window.location.hash;
+  if (hash === '#dashboard') {
+    const session = getSession();
+    app.innerHTML = session ? dashboardPage(session.user) : loginPage();
+    wireInteractions();
+    return;
+  }
+  if ((hash === '#login' || hash === '#admin-login') && getSession()) {
+    window.location.hash = '#dashboard';
+    return;
+  }
+  app.innerHTML = hash === '#login'
     ? loginPage()
-    : window.location.hash === '#admin-login'
+    : hash === '#admin-login'
       ? loginPage(true)
-    : window.location.hash === '#partner-signup'
+    : hash === '#partner-signup'
       ? partnerPage()
       : landingPage();
   wireInteractions();
