@@ -1,0 +1,47 @@
+flowchart LR
+    T[Traveler]
+    P[Storage Partner]
+
+    P31((3.1<br/>Validate Booking Request))
+    P32((3.2<br/>Create Booking))
+    P33((3.3<br/>Verify Handoff))
+    P34((3.4<br/>Record Drop-off))
+    P35((3.5<br/>Complete Pickup))
+
+    D2[(D2: Storage Listings)]
+    D3[(D3: Booking Records)]
+
+    PAY((4.0<br/>Process Payments))
+
+    T -->|Booking request| P31
+    P31 -->|Availability query| D2
+    D2 -->|Availability and pricing data| P31
+
+    P31 -->|Validated booking details| P32
+    P32 -->|Booking record| D3
+    P32 -->|Availability update| D2
+
+    P32 -->|Payment details| PAY
+    PAY -->|Payment status| P32
+
+    P32 -->|Booking confirmation and verification details| T
+    P32 -->|Booking and verification details| P
+
+    T -->|Handoff verification details| P33
+    P33 -->|Booking verification query| D3
+    D3 -->|Booking and verification data| P33
+
+    P33 -->|Verified handoff details| P34
+    P -->|Drop-off confirmation| P34
+    P34 -->|Drop-off record and booking status| D3
+    P34 -->|Drop-off status| T
+
+    T -->|Pickup verification details| P35
+    P -->|Pickup confirmation| P35
+    P35 -->|Booking verification query| D3
+    D3 -->|Booking and handoff data| P35
+
+    P35 -->|Completed booking and pickup record| D3
+    P35 -->|Availability update| D2
+    P35 -->|Booking completion status| T
+    P35 -->|Booking completion status| P

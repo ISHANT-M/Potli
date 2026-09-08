@@ -1,0 +1,50 @@
+flowchart LR
+    T[Traveler]
+    P[Storage Partner]
+    A[Administrator]
+    G[Payment Gateway]
+
+    P1((1.0<br/>Manage Accounts))
+    P2((2.0<br/>Manage Storage Listings))
+    P3((3.0<br/>Manage Bookings & Handoffs))
+    P4((4.0<br/>Process Payments))
+    P5((5.0<br/>Administer Platform))
+
+    D1[(D1: User & Partner Data)]
+    D2[(D2: Storage Listings)]
+    D3[(D3: Booking Records)]
+    D4[(D4: Payment Records)]
+
+    T -->|Registration and login details| P1
+    P1 -->|Account status| T
+    P1 <-->|Account data| D1
+
+    P -->|Business details and availability| P2
+    P2 -->|Listing status| P
+    P2 <-->|Listing data| D2
+
+    T -->|Search criteria| P2
+    P2 -->|Available storage options| T
+
+    T -->|Booking and handoff details| P3
+    P3 -->|Booking confirmation and status| T
+    P3 <-->|Booking data| D3
+
+    P3 -->|Booking and verification details| P
+    P -->|Drop-off and pickup updates| P3
+
+    P3 -->|Payment details| P4
+    P4 -->|Payment status| P3
+
+    P4 -->|Payment and refund requests| G
+    G -->|Payment and refund status| P4
+    P4 <-->|Transaction data| D4
+    P4 -->|Payout and earnings information| P
+
+    A -->|Management and approval details| P5
+    P5 -->|Reports and dispute information| A
+
+    P5 <-->|User and partner data| D1
+    P5 <-->|Listing data| D2
+    P5 <-->|Booking data| D3
+    P5 <-->|Payment data| D4
