@@ -1,0 +1,13 @@
+{
+  "name": "potli",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local dev tooling for the Potli frontend, backend, and database",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "db:setup": "node scripts/setup.mjs --only db --with-db",
+    "build": "npm --prefix frontend run build"
+  }
+}
