@@ -79,6 +79,38 @@ The data flow diagrams model the designed system from context (Level 0) through 
   <img src="assets/dfd-level-2.svg" alt="POTLI Level 2 diagram detailing the booking and luggage handoff subprocesses" width="100%">
 </p>
 
+## Sequence diagram
+
+The sequence diagram traces the designed booking workflow end to end across the traveler, web app, backend API, database, payment gateway, and storage partner: search and booking, the QR/OTP drop-off handoff, and the pickup and payout settlement. See [UML Diagrams](docs/uml-diagrams.md) for the full explanation.
+
+<p align="center">
+  <img src="assets/sequence-diagram.svg" alt="POTLI sequence diagram showing the booking, drop-off, and pickup handoff workflow" width="100%">
+</p>
+
+## Class diagram
+
+The class diagram models the domain objects behind the platform: role-specialised users (traveler, storage partner, administrator), storage listings, bookings, handoff records, payments, and ratings, with their attributes, operations, and relationships.
+
+<p align="center">
+  <img src="assets/class-diagram.svg" alt="POTLI class diagram showing users, storage listings, bookings, payments, and ratings" width="100%">
+</p>
+
+## Collaboration diagram
+
+The collaboration (communication) diagram gives an object-centric view of the "create booking" scenario, with the same interaction as the sequence diagram expressed as objects linked by numbered messages.
+
+<p align="center">
+  <img src="assets/collaboration-diagram.svg" alt="POTLI collaboration diagram showing the create-booking scenario as numbered messages between objects" width="100%">
+</p>
+
+## State diagram
+
+The state diagram models the booking lifecycle defined in the proposal: Booked → Dropped → Stored → Picked up, plus the pending-payment, cancelled, and expired states.
+
+<p align="center">
+  <img src="assets/state-diagram.svg" alt="POTLI state diagram showing the booking lifecycle from pending payment through completion" width="100%">
+</p>
+
 ## Solution architecture
 
 POTLI is planned as a responsive three-tier web application:
@@ -120,6 +152,7 @@ POTLI is currently in the **planning and design phase**. The proposal, initial s
 - [Use-case diagram](assets/use-case-diagram.svg)
 - [Activity diagram](assets/activity-diagram.svg)
 - [Data flow diagrams](docs/data-flow-diagrams.md)
+- [UML diagrams (sequence, class, collaboration, state)](docs/uml-diagrams.md)
 - [Gantt chart](assets/gantt-chart.svg)
 
 ## Team

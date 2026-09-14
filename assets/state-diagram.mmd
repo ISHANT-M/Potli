@@ -1,0 +1,28 @@
+stateDiagram-v2
+    [*] --> PendingPayment : booking request validated (P31)
+
+    PendingPayment --> Booked : payment captured (P32)
+    PendingPayment --> Cancelled : payment fails / traveler cancels
+
+    Booked --> Dropped : partner verifies check-in QR/OTP (P33)
+    Booked --> Expired : slot window elapses with no drop-off
+
+    Dropped --> Stored : drop-off photo captured & recorded (P34)
+
+    Stored --> PickedUp : partner verifies retrieval QR/OTP (P35)
+
+    PickedUp --> Completed : payout settled, rating requested
+
+    Cancelled --> [*] : refund issued via payment gateway
+    Expired --> [*] : refund issued via payment gateway
+    Completed --> [*]
+
+    note right of PendingPayment
+        Booking Fulfillment Time (BFT) is measured
+        from search start to entry into Booked.
+    end note
+
+    note right of Stored
+        Photographic handoff proof is attached
+        to the drop-off record here.
+    end note

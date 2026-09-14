@@ -1,0 +1,58 @@
+%%{init: {'themeVariables': {'noteBkgColor': '#E8E8E8', 'noteBorderColor': '#999999', 'noteTextColor': '#1a1a1a'}}}%%
+sequenceDiagram
+    autonumber
+    actor T as Traveler
+    participant W as Web App (Frontend)
+    participant API as Backend API
+    participant DB as Database
+    participant Pay as Payment Gateway (UPI)
+    actor P as Storage Partner
+
+    Note over T,DB: Discovery & booking (DFD P2, P31, P32)
+    T->>W: Search storage near location
+    W->>API: GET /listings?city=&near=
+    API->>DB: Query available listings (D2)
+    DB-->>API: Matching listings
+    API-->>W: Available storage options
+    W-->>T: Display storage options
+
+    T->>W: Select partner, time slot, confirm booking
+    W->>API: POST /bookings
+    activate API
+    API->>DB: Validate slot against availability & pricing (P31)
+    DB-->>API: Availability confirmed
+    API->>Pay: Charge booking amount
+    Pay-->>API: Payment captured
+    API->>DB: Create booking record, generate QR/OTP (P32)
+    API->>DB: Update listing availability (D2)
+    API-->>W: Booking confirmation + QR/OTP
+    deactivate API
+    W-->>T: Show booking ID and QR/OTP
+
+    Note over T,P: Drop-off handoff (DFD P33, P34)
+    T->>P: Present check-in QR/OTP
+    P->>API: POST /bookings/{id}/verify-checkin
+    activate API
+    API->>DB: Match handoff details against booking (P33)
+    DB-->>API: Handoff verified
+    deactivate API
+    P->>API: Upload drop-off photo, confirm drop-off
+    API->>DB: Record drop-off, set status = Stored (P34)
+    API-->>P: Drop-off confirmed
+    API-->>T: Notify: luggage stored
+
+    Note over T,Pay: Pickup & settlement (DFD P35, P4)
+    T->>P: Present retrieval QR/OTP
+    P->>API: POST /bookings/{id}/verify-pickup
+    activate API
+    API->>DB: Verify pickup details against booking (P35)
+    DB-->>API: Pickup verified
+    API->>DB: Mark booking Completed, restore availability
+    API->>Pay: Release partner payout
+    Pay-->>API: Payout settled
+    deactivate API
+    API-->>P: Pickup confirmed + payout status
+    API-->>T: Booking completed, request rating
+    T->>W: Submit post-pickup rating
+    W->>API: POST /bookings/{id}/rating
+    API->>DB: Store rating
