@@ -1,0 +1,25 @@
+flowchart TB
+    T([":Traveler"])
+    W["W :WebApp"]
+    API["API :BookingService"]
+    LDB[("D2 :ListingStore")]
+    BDB[("D3 :BookingStore")]
+    Pay["Pay :PaymentGateway"]
+    P([":StoragePartner"])
+
+    T -- "1: searchStorage(location)" --> W
+    W -- "1.1: getListings(city)" --> API
+    API -- "1.1.1: queryAvailable()" --> LDB
+    LDB -. "1.1.2: listings" .-> API
+    API -. "1.2: availableOptions" .-> W
+    W -. "1.3: displayOptions()" .-> T
+
+    T -- "2: confirmBooking(listingId, slot)" --> W
+    W -- "2.1: createBooking(details)" --> API
+    API -- "2.2: chargePayment(amount)" --> Pay
+    Pay -. "2.3: paymentCaptured" .-> API
+    API -- "2.4: saveBookingRecord()" --> BDB
+    API -- "2.5: updateAvailability()" --> LDB
+    API -- "2.6: notifyPartner(bookingId)" --> P
+    API -. "2.7: bookingConfirmation(qrCode)" .-> W
+    W -. "2.8: showConfirmation()" .-> T

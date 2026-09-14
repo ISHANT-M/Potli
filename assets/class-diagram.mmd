@@ -1,0 +1,154 @@
+%%{init: {'themeVariables': {'edgeLabelBackground': '#E8E8E8'}, 'themeCSS': '.edgeLabel .label rect{fill:#E8E8E8 !important;} .edgeLabel .label span{background:#E8E8E8 !important;} .labelBkg{background:#E8E8E8 !important;}'}}%%
+classDiagram
+    direction TB
+
+    class User {
+        <<abstract>>
+        +UUID id
+        +string email
+        -string passwordHash
+        +string fullName
+        +Role role
+        +datetime createdAt
+        +authenticate(password) bool
+        +toPublicProfile() PublicUser
+    }
+
+    class Traveler {
+        +searchListings(city, filters) StorageListing[]
+        +createBooking(listingId, slot) Booking
+        +presentHandoffCode(bookingId, type) Code
+        +rateBooking(bookingId, score, comment) Rating
+    }
+
+    class StoragePartner {
+        +registerBusinessProfile(details) PartnerProfile
+        +setAvailability(capacity, hours) void
+        +validateCheckIn(code) Booking
+        +verifyRetrieval(code) Booking
+        +viewEarnings() PayoutSummary
+    }
+
+    class Administrator {
+        +approvePartner(partnerId) void
+        +monitorBookings() Booking[]
+        +resolveDispute(bookingId, resolution) void
+        +auditPlatformFees() Report
+    }
+
+    class PartnerProfile {
+        +UUID userId
+        +string businessName
+        +string phone
+        +bool isVerified
+        +datetime createdAt
+    }
+
+    class StorageListing {
+        +UUID id
+        +UUID partnerId
+        +string address
+        +string city
+        +int capacity
+        +decimal pricePerHour
+        +time openTime
+        +time closeTime
+        +updateAvailability(delta) void
+        +computePrice(durationHours) decimal
+    }
+
+    class Booking {
+        +UUID id
+        +UUID travelerId
+        +UUID listingId
+        +datetime slotStart
+        +datetime slotEnd
+        +string qrOrOtp
+        +BookingStatus status
+        +datetime createdAt
+        +generateHandoffCode() string
+        +transitionTo(status) void
+    }
+
+    class HandoffRecord {
+        +UUID id
+        +UUID bookingId
+        +HandoffType type
+        +UUID verifiedByUserId
+        +string photoUrl
+        +datetime verifiedAt
+    }
+
+    class Payment {
+        +UUID id
+        +UUID bookingId
+        +decimal amount
+        +decimal platformFee
+        +decimal partnerPayout
+        +PaymentStatus status
+        +string gatewayReference
+        +capture() void
+        +refund() void
+        +settlePayout() void
+    }
+
+    class Rating {
+        +UUID id
+        +UUID bookingId
+        +UUID travelerId
+        +int score
+        +string comment
+    }
+
+    class Role {
+        <<enumeration>>
+        TRAVELER
+        STORAGE_PARTNER
+        ADMIN
+    }
+
+    class BookingStatus {
+        <<enumeration>>
+        PENDING_PAYMENT
+        BOOKED
+        DROPPED
+        STORED
+        PICKED_UP
+        COMPLETED
+        CANCELLED
+        EXPIRED
+    }
+
+    class HandoffType {
+        <<enumeration>>
+        DROP_OFF
+        PICKUP
+    }
+
+    class PaymentStatus {
+        <<enumeration>>
+        PENDING
+        CAPTURED
+        REFUNDED
+        PAYOUT_SETTLED
+        FAILED
+    }
+
+    User <|-- Traveler
+    User <|-- StoragePartner
+    User <|-- Administrator
+    User "1" *-- "1" Role
+
+    StoragePartner "1" *-- "1" PartnerProfile : has
+    StoragePartner "1" o-- "0..*" StorageListing : manages
+    Administrator "1" ..> "0..*" StorageListing : verifies
+    Administrator "1" ..> "0..*" Booking : audits
+
+    Traveler "1" --> "0..*" Booking : makes
+    StorageListing "1" --> "0..*" Booking : receives
+    Booking "1" *-- "1" BookingStatus
+    Booking "1" *-- "1..2" HandoffRecord : logs
+    HandoffRecord "1" *-- "1" HandoffType
+    Booking "1" *-- "1" Payment : settled by
+    Payment "1" *-- "1" PaymentStatus
+    Booking "1" o-- "0..1" Rating : rated by
