@@ -18,18 +18,18 @@ for (const file of [path.join(here, '.env'), path.join(here, '..', 'backend', '.
 
 const read = (name: string): string => (process.env[name] ?? '').trim();
 
-/** Supabase Postgres is canonical; the pre-Supabase Neon URL is the fallback. */
-export const DATABASE_URL = read('SUPABASE_DB_URL') || read('DATABASE_URL');
+/** Supabase Postgres (session pooler). */
+export const SUPABASE_DB_URL = read('SUPABASE_DB_URL');
 
 /** Shared dev password for the seeded accounts. */
 export const DEV_SEED_PASSWORD = read('DEV_SEED_PASSWORD') || 'Potli123!';
 
 export const MIGRATIONS_DIR = path.join(here, 'supabase', 'migrations');
 export function requireDatabaseUrl(): string {
-  if (!DATABASE_URL) {
-    console.error('Missing SUPABASE_DB_URL (or DATABASE_URL) in backend/.env.');
+  if (!SUPABASE_DB_URL) {
+    console.error('Missing SUPABASE_DB_URL in backend/.env.');
     console.error('See backend/.env.example: the value is the Supabase session pooler string.');
     process.exit(1);
   }
-  return DATABASE_URL;
+  return SUPABASE_DB_URL;
 }

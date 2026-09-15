@@ -8,10 +8,10 @@
  * database and would try to manage Supabase's own auth schema.
  */
 import { defineConfig } from 'drizzle-kit';
-import { DATABASE_URL } from './env.ts';
+import { SUPABASE_DB_URL } from './env.ts';
 
-if (!DATABASE_URL) {
-  console.error('Set SUPABASE_DB_URL (or DATABASE_URL) in backend/.env before running drizzle-kit.');
+if (!SUPABASE_DB_URL) {
+  console.error('Set SUPABASE_DB_URL in backend/.env before running drizzle-kit.');
   process.exit(1);
 }
 
@@ -21,5 +21,5 @@ export default defineConfig({
   out: './supabase/migrations',
   migrations: { prefix: 'supabase' },
   tablesFilter: ['!auth.*'],
-  dbCredentials: { url: DATABASE_URL },
+  dbCredentials: { url: SUPABASE_DB_URL },
 });

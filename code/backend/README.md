@@ -21,10 +21,9 @@ Or let the root bootstrap do everything: `npm run setup` from `code/`.
 
 Required env (see `.env.example`): `SUPABASE_URL`, `SUPABASE_ANON_KEY` and
 `SUPABASE_DB_URL`. The newer Supabase name `SUPABASE_PUBLISHABLE_KEY` is
-accepted as an alias for the anon key. The pre-Supabase `DATABASE_URL` remains a
-fallback for the database connection and is ignored once `SUPABASE_DB_URL` is
-set. No secret/service key is needed: the backend never makes privileged Auth
-calls — it verifies user tokens with the anon key.
+accepted as an alias for the anon key. No secret/service key is needed: the
+backend never makes privileged Auth calls — it verifies user tokens with the
+anon key.
 
 ## Layout
 

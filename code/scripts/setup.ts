@@ -182,8 +182,7 @@ function runDatabase(opts: Options): boolean {
   if (info.state !== 'configured') {
     const messages: Record<Exclude<ConnectionState, 'configured'>, [detail: string, hint: string]> = {
       'missing-env': [`${rel} does not exist yet`, 'run "npm run setup" to create it'],
-      'missing-key': [`${rel} has no ${DB_URL_KEYS.join(' or ')} line`, 'add one, see backend/.env.example'],
-      empty: [`${where} is empty`, `set ${info.key} to your Supabase connection string`],
+      'missing-key': [`${rel} has no ${DB_URL_KEYS.join(' or ')} line`, 'add one, see backend/.env.example'],      empty: [`${where} is empty`, `set ${info.key} to your Supabase connection string`],
       placeholder: [
         `${where} still holds the .env.example template`,
         `replace ${info.key} with your Supabase connection string (Dashboard -> Connect)`,
@@ -201,7 +200,7 @@ function runDatabase(opts: Options): boolean {
   }
 
   const value = info.value ?? '';
-  const key = info.key ?? DB_URL_KEYS[0] ?? 'DATABASE_URL';
+  const key = info.key ?? DB_URL_KEYS[0] ?? 'SUPABASE_DB_URL';
   for (const script of ['migrate', 'seed']) {
     const result = runNpm(['run', script], dbDir);
     if (result.status !== 0) {

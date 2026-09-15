@@ -12,16 +12,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** Supabase Postgres first; the pre-Supabase Neon URL is the fallback. */
-export const DB_URL_KEYS = ['SUPABASE_DB_URL', 'DATABASE_URL'];
+/** The one connection string the project uses. */
+export const DB_URL_KEYS = ['SUPABASE_DB_URL'];
 
 /** Any one of these means Supabase Auth is configured for the backend. */
 export const SUPABASE_URL_KEYS = ['SUPABASE_URL'];
 export const SUPABASE_ANON_KEYS = ['SUPABASE_ANON_KEY', 'SUPABASE_PUBLISHABLE_KEY'];
 
-// Templates shipped in .env.example: "USER:PASSWORD@HOST" (Neon) and
-// "postgres.PROJECT-REF:..." (Supabase).
-const PLACEHOLDER = /(USER:PASSWORD@HOST|PROJECT-REF|PASSWORD@)/;
+// The templates ship in .env.example as "postgres.PROJECT-REF:..." (Supabase).
+const PLACEHOLDER = /(PROJECT-REF|PASSWORD@)/;
 
 export type ConnectionState = 'configured' | 'missing-env' | 'missing-key' | 'empty' | 'placeholder';
 

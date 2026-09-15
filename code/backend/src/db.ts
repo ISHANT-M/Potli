@@ -9,9 +9,9 @@
 import { createDb, type Database } from '../../db/client.ts';
 import { loadProfile as loadProfileFrom } from '../../db/profiles.ts';
 import type { Profile } from '../../db/profiles.ts';
-import { DATABASE_URL } from './config.ts';
+import { SUPABASE_DB_URL } from './config.ts';
 
-const connection = createDb(DATABASE_URL);
+const connection = createDb(SUPABASE_DB_URL);
 
 export const { pool } = connection;
 export const db: Database = connection.db;

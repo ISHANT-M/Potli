@@ -11,14 +11,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createDb } from '../client.ts';
-import { DATABASE_URL, MIGRATIONS_DIR, requireDatabaseUrl } from '../env.ts';
+import { MIGRATIONS_DIR, SUPABASE_DB_URL, requireDatabaseUrl } from '../env.ts';
 import { describeDbError } from '../errors.ts';
 
 const MIGRATION_PATTERN = /^(\d{14})_(.+)\.sql$/;
 
 async function main(): Promise<void> {
   requireDatabaseUrl();
-  const { pool } = createDb(DATABASE_URL);
+  const { pool } = createDb(SUPABASE_DB_URL);
 
   try {
     const files = fs

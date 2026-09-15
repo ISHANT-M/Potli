@@ -9,7 +9,7 @@
  * This is TypeScript executed by Node's native type stripping.
  */
 import { createDb } from '../client.ts';
-import { DATABASE_URL, DEV_SEED_PASSWORD, requireDatabaseUrl } from '../env.ts';
+import { DEV_SEED_PASSWORD, SUPABASE_DB_URL, requireDatabaseUrl } from '../env.ts';
 import { upsertPartnerProfile, upsertProfile } from '../profiles.ts';
 import type { Role } from '../schema.ts';
 import type pg from 'pg';
@@ -108,7 +108,7 @@ async function ensureIdentity(pool: pg.Pool, userId: string, email: string): Pro
 
 async function main(): Promise<void> {
   requireDatabaseUrl();
-  const { pool, db } = createDb(DATABASE_URL);
+  const { pool, db } = createDb(SUPABASE_DB_URL);
 
   try {
     for (const user of DEV_USERS) {
