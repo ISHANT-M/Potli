@@ -1,4 +1,4 @@
-# POTLI UML Diagrams (Sequence, Class, Collaboration, State)
+# POTLI UML Diagrams (Sequence, Class, Collaboration)
 
 This document explains the behavioural and structural UML diagrams that
 complement the [use-case diagram](../assets/use-case-diagram.svg), the
@@ -22,7 +22,7 @@ draw a complete diagram.
 
 ## Conventions
 
-- Editable sources: `assets/{sequence,class,collaboration,state}-diagram.mmd`
+- Editable sources: `assets/{sequence,class,collaboration}-diagram.mmd`
   (Mermaid), rendered with the Mermaid CLI (`mmdc`) to SVG and 2x PNG, the
   same pipeline used for the DFDs.
 - Process references such as `(P31)` or `(P4)` point at the matching process
@@ -32,15 +32,22 @@ draw a complete diagram.
 ## Sequence diagram — booking and handoff workflow (`assets/sequence-diagram.*`)
 
 Shows the primary designed interaction end to end: a traveler searching for
-storage, confirming a booking, the drop-off handoff, and the pickup and
-payout settlement. Participants are the Traveler and Storage Partner
-(actors), the Web App (frontend), the Backend API, the Database, and the
-Payment Gateway (UPI) — mirroring the DFD Level 0 external entities and the
-Level 1/2 processes.
+storage, logging in, confirming a booking, the drop-off handoff, and the
+pickup and payout settlement. Participants are the Traveler and Storage
+Partner (actors), the Web App (frontend), the Backend API, the Database, and
+the Payment Gateway (UPI) — mirroring the DFD Level 0 external entities and
+the Level 1/2 processes. Every synchronous call is bracketed by an
+activation (execution occurrence) on the receiving lifeline, closed once its
+reply is sent, per standard sequence-diagram notation.
 
-- **Discovery & booking** (`P2`, `P31`, `P32`): search, availability
-  validation, payment capture, booking record creation, and QR/OTP
-  generation.
+- **Discovery** (`P2`): the traveler searches and browses storage options
+  before authenticating, matching the implemented public landing/search flow.
+- **Login** (`P1`): the traveler signs in via the implemented
+  `POST /api/v1/auth/login` endpoint before a booking can be created,
+  matching the JWT-based auth already in `code/backend`.
+- **Booking** (`P31`, `P32`): availability validation, payment capture,
+  booking record creation, and QR/OTP generation, authorized with the
+  bearer token from login.
 - **Drop-off handoff** (`P33`, `P34`): the partner scans the check-in
   code, the API matches it against the booking record, and the drop-off
   (with photo) is recorded.
@@ -81,6 +88,7 @@ directly to the sequence diagram's steps 1–8 (`1.1`, `1.1.1`, `2.1`… follow
 UML's nested-call numbering), so both diagrams describe one interaction from
 two standard perspectives, as required for a complete behavioural view.
 
+<!--
 ## State diagram — booking lifecycle (`assets/state-diagram.*`)
 
 A state-machine diagram for the `Booking` object's `status` field, following
@@ -102,3 +110,5 @@ in the DFDs and the proposal's escrow-style payment risk mitigation.
 
 Booking Fulfillment Time (BFT), the proposal's primary evaluation metric, is
 measured from search start to entry into `Booked`.
+-->
+

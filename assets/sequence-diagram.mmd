@@ -8,37 +8,75 @@ sequenceDiagram
     participant Pay as Payment Gateway (UPI)
     actor P as Storage Partner
 
-    Note over T,DB: Discovery & booking (DFD P2, P31, P32)
+    Note over T,DB: Discovery (DFD P2)
     T->>W: Search storage near location
+    activate W
     W->>API: GET /listings?city=&near=
+    activate API
     API->>DB: Query available listings (D2)
+    activate DB
     DB-->>API: Matching listings
+    deactivate DB
     API-->>W: Available storage options
+    deactivate API
     W-->>T: Display storage options
+    deactivate W
 
+    Note over T,DB: Login (DFD P1)
+    T->>W: Log in to continue booking
+    activate W
+    W->>API: POST /auth/login
+    activate API
+    API->>DB: Verify credentials (D1)
+    activate DB
+    DB-->>API: User record
+    deactivate DB
+    API-->>W: JWT token + user profile
+    deactivate API
+    W-->>T: Logged in
+    deactivate W
+
+    Note over T,DB: Booking (DFD P31, P32)
     T->>W: Select partner, time slot, confirm booking
-    W->>API: POST /bookings
+    activate W
+    W->>API: POST /bookings (Bearer token)
     activate API
     API->>DB: Validate slot against availability & pricing (P31)
+    activate DB
     DB-->>API: Availability confirmed
+    deactivate DB
     API->>Pay: Charge booking amount
+    activate Pay
     Pay-->>API: Payment captured
+    deactivate Pay
     API->>DB: Create booking record, generate QR/OTP (P32)
+    activate DB
     API->>DB: Update listing availability (D2)
+    DB-->>API: Booking record saved
+    deactivate DB
     API-->>W: Booking confirmation + QR/OTP
     deactivate API
     W-->>T: Show booking ID and QR/OTP
+    deactivate W
 
     Note over T,P: Drop-off handoff (DFD P33, P34)
     T->>P: Present check-in QR/OTP
     P->>API: POST /bookings/{id}/verify-checkin
     activate API
     API->>DB: Match handoff details against booking (P33)
+    activate DB
     DB-->>API: Handoff verified
+    deactivate DB
+    API-->>P: Handoff verified
     deactivate API
     P->>API: Upload drop-off photo, confirm drop-off
+    activate API
     API->>DB: Record drop-off, set status = Stored (P34)
+    activate DB
+    DB-->>API: Drop-off recorded
+    deactivate DB
     API-->>P: Drop-off confirmed
+    deactivate API
     API-->>T: Notify: luggage stored
 
     Note over T,Pay: Pickup & settlement (DFD P35, P4)
@@ -46,13 +84,30 @@ sequenceDiagram
     P->>API: POST /bookings/{id}/verify-pickup
     activate API
     API->>DB: Verify pickup details against booking (P35)
+    activate DB
     DB-->>API: Pickup verified
+    deactivate DB
     API->>DB: Mark booking Completed, restore availability
+    activate DB
+    DB-->>API: Booking updated
+    deactivate DB
     API->>Pay: Release partner payout
+    activate Pay
     Pay-->>API: Payout settled
-    deactivate API
+    deactivate Pay
     API-->>P: Pickup confirmed + payout status
+    deactivate API
     API-->>T: Booking completed, request rating
+
     T->>W: Submit post-pickup rating
+    activate W
     W->>API: POST /bookings/{id}/rating
+    activate API
     API->>DB: Store rating
+    activate DB
+    DB-->>API: Rating saved
+    deactivate DB
+    API-->>W: Rating recorded
+    deactivate API
+    W-->>T: Thank you for your feedback
+    deactivate W
