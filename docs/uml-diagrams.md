@@ -11,7 +11,7 @@ complement the [use-case diagram](../assets/use-case-diagram.svg), the
 
 POTLI is in the **planning and design phase**. The only implemented code is
 the static frontend shell, a versioned auth API (`/api/v1/auth/login`,
-`/api/v1/auth/me`), and a `users` / `partner_profiles` schema (see
+`/api/v1/auth/me`), and a `profiles` / `partner_profiles` schema (see
 `code/`). Everything else shown below — search, booking, QR/OTP handoff,
 payments, payouts, ratings, admin oversight — is the **planned/designed
 system**, grounded in the README capabilities table, the proposal's core
@@ -59,13 +59,13 @@ reply is sent, per standard sequence-diagram notation.
 ## Class diagram — domain model (`assets/class-diagram.*`)
 
 Models the core objects behind the data stores D1–D4 and the capabilities
-table in the README. `User` is an abstract base (matching the single
-`users` table with a `role` enum in `code/db/schema.sql`) specialised by
+table in the README. `User` is an abstract base (matching Supabase Auth's `auth.users`
+plus the `role` enum on `public.profiles`) specialised by
 `Traveler`, `StoragePartner`, and `Administrator`. Key relationships:
 
 | Relationship | Meaning |
 | --- | --- |
-| `User <|-- Traveler / StoragePartner / Administrator` | Role specialisation (generalisation), matching `users.role` |
+| `User <|-- Traveler / StoragePartner / Administrator` | Role specialisation (generalisation), matching `profiles.role` |
 | `StoragePartner *-- PartnerProfile` | Business details, matching `partner_profiles` |
 | `StoragePartner o-- StorageListing` | A partner manages zero or more listings (D2) |
 | `Traveler --> Booking` | A traveler makes zero or more bookings (D3) |
