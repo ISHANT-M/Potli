@@ -1,4 +1,5 @@
 import './styles.css';
+import { arrivingFromRecoveryLink, linkError, supabase, supabaseConfigured } from './supabase';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 const API_V1 = `${API_BASE}/api/v1`;
@@ -7,24 +8,79 @@ interface SessionUser {
   id: string;
   email: string;
   full_name: string;
-  role: 'traveler' | 'storage_partner' | 'admin';
+  role: Role;
 }
 
-function getSession(): { token: string; user: SessionUser } | null {
-  try {
-    const raw = localStorage.getItem('potli_session');
-    return raw ? (JSON.parse(raw) as { token: string; user: SessionUser }) : null;
-  } catch {
-    return null;
-  }
+type Role = 'traveler' | 'storage_partner' | 'admin';
+
+interface CurrentUser {
+  email: string;
+  full_name: string;
+  role: Role;
 }
 
-function setSession(token: string, user: SessionUser): void {
-  localStorage.setItem('potli_session', JSON.stringify({ token, user }));
+// Each role has its own sign-in page, and a page only accepts its own role.
+const LOGIN_PAGE: Record<Role, string> = {
+  traveler: 'traveller login',
+  storage_partner: 'partner login',
+  admin: 'admin login',
+};
+
+const ROLE_NOUN: Record<Role, string> = {
+  traveler: 'Traveller',
+  storage_partner: 'Storage partner',
+  admin: 'Admin',
+};
+
+// Session state is owned by Supabase Auth (persisted and refreshed by supabase-js).
+let currentUser: CurrentUser | null = null;
+// Set when the user asks for a reset link, so the emailed link lands on the
+// password form instead of the dashboard.
+const RECOVERY_FLAG = 'potli_recovery';
+
+// While a page-level flow (sign-in, password reset) owns the UI, the auth-state
+// listener stays out of the way: otherwise it would render the dashboard the
+// moment credentials are accepted, before the role check has run.
+let authTransition = false;
+// One-shot notice for a specific page (role mix-ups, dead reset links). It is
+// keyed by route and survives re-renders of that page, because the auth-state
+// listener may render again right after a flow sets it; it is cleared when the
+// visitor starts a new attempt.
+let authNotice: { route: string; text: string } | null = null;
+
+function noticeField(route: string): string {
+  const notice = authNotice?.route === route ? authNotice.text : '';
+  return `<p class="form-message" role="status">${notice}</p>`;
 }
 
-function clearSession(): void {
-  localStorage.removeItem('potli_session');
+function markRecoveryPending(pending: boolean): void {
+  if (pending) sessionStorage.setItem(RECOVERY_FLAG, '1');
+  else sessionStorage.removeItem(RECOVERY_FLAG);
+}
+
+function recoveryPending(): boolean {
+  return sessionStorage.getItem(RECOVERY_FLAG) === '1';
+}
+
+// A reset link signs the user in for one password change, so it goes to the
+// password form rather than the dashboard.
+function showResetForm(): void {
+  markRecoveryPending(true);
+  if (window.location.hash === '#reset-password') render();
+  else window.location.hash = '#reset-password';
+}
+
+async function loadProfile(): Promise<CurrentUser | null> {
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+  if (!accessToken) return null;
+
+  const res = await fetch(`${API_V1}/auth/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return null;
+  const body = (await res.json()) as { user?: SessionUser };
+  return body.user ?? null;
 }
 
 type IconName = 'arrow' | 'bag' | 'check' | 'clock' | 'location' | 'logo' | 'quote' | 'shield' | 'store';
@@ -52,9 +108,8 @@ const team = [
 ];
 
 function header(): string {
-  const session = getSession();
-  const accountLink = session
-    ? `<a class="login-link" href="#dashboard">${session.user.full_name}</a><a class="button button-small" href="#dashboard">Dashboard</a>`
+  const accountLink = currentUser
+    ? `<a class="login-link" href="#dashboard">${currentUser.full_name}</a><a class="button button-small" href="#dashboard">Dashboard</a>`
     : `<a class="earn-link" href="#partners">Earn with Potli</a>
       <a class="login-link" href="#login">Log in</a>
       <a class="button button-small" href="#search">Find storage</a>`;
@@ -121,10 +176,23 @@ function landingPage(): string {
   </main>${footer()}`;
 }
 
-function loginPage(isAdmin = false): string {
+function loginPage(kind: Role = 'traveler'): string {
+  const isAdmin = kind === 'admin';
   return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><a href="#home">Back to home</a></header>
   <main class="login-page"><section class="login-intro"><p class="eyebrow">${isAdmin ? 'Potli administration' : 'Welcome back'}</p><h1>${isAdmin ? 'Keep Potli running smoothly.' : 'Your plans are waiting.'}</h1><p>${isAdmin ? 'Secure access for authorised Potli administrators.' : 'Log in to view bookings, manage a storage location, or pick up where you left off.'}</p><div class="login-quote"><span class="quote-mark quote-open">${icon('quote')}</span><p>Travel is better when the bags aren't deciding the itinerary.</p><span class="quote-mark quote-close">${icon('quote')}</span></div></section>
-  <section class="login-panel"><div class="login-card"><h2>${isAdmin ? 'Admin login' : 'Log in to Potli'}</h2><p>${isAdmin ? 'Enter your administrator credentials.' : 'Enter your details to continue.'}</p><form id="login-form"><label>Email address<input type="email" name="email" placeholder="${isAdmin ? 'admin@potli.com' : 'you@example.com'}" autocomplete="email" required /></label><label>Password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="current-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label><div class="form-row"><label class="checkbox"><input type="checkbox" /> Remember me</label><a href="${isAdmin ? '#admin-login' : '#login'}">Forgot password?</a></div><button class="button login-submit" type="submit">${isAdmin ? 'Continue securely' : 'Log in'} ${icon('arrow')}</button><p class="form-message" role="status"></p></form>${isAdmin ? '<p class="admin-access-link"><a href="#login">Return to traveller login</a></p>' : '<p class="signup-note">New to Potli? <span>Traveller sign-up is coming soon.</span></p><p class="admin-access-link">Potli team member? <a href="#admin-login">Admin login</a></p>'}</div></section></main>`;
+  <section class="login-panel"><div class="login-card"><h2>${isAdmin ? 'Admin login' : 'Log in to Potli'}</h2><p>${isAdmin ? 'Enter your administrator credentials.' : 'Enter your details to continue.'}</p><form id="login-form" data-expected-role="${kind}"><label>Email address<input type="email" name="email" placeholder="${isAdmin ? 'admin@potli.com' : 'you@example.com'}" autocomplete="email" required /></label><label>Password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="current-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label><div class="form-row"><label class="checkbox"><input type="checkbox" /> Remember me</label><a href="#forgot-password">Forgot password?</a></div><button class="button login-submit" type="submit">${isAdmin ? 'Continue securely' : 'Log in'} ${icon('arrow')}</button>${noticeField(isAdmin ? '#admin-login' : '#login')}</form>${isAdmin ? '<p class="admin-access-link"><a href="#login">Return to traveller login</a></p>' : '<p class="signup-note">New to Potli? <span>Traveller sign-up is coming soon.</span></p><p class="admin-access-link">Potli team member? <a href="#admin-login">Admin login</a></p>'}</div></section></main>`;
+}
+
+function forgotPasswordPage(): string {
+  return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><a href="#login">Back to login</a></header>
+  <main class="login-page"><section class="login-intro"><p class="eyebrow">Account recovery</p><h1>Forgot your password?</h1><p>Give us the email on your Potli account and we will send a secure link to choose a new password.</p><div class="login-quote"><span class="quote-mark quote-open">${icon('quote')}</span><p>The bags are safe. Your password can be too.</p><span class="quote-mark quote-close">${icon('quote')}</span></div></section>
+  <section class="login-panel"><div class="login-card"><h2>Reset password</h2><p>We will email you a link that expires shortly.</p><form id="forgot-form"><label>Email address<input type="email" name="email" placeholder="you@example.com" autocomplete="email" required /></label><button class="button login-submit" type="submit">Send reset link ${icon('arrow')}</button>${noticeField('#forgot-password')}</form><p class="admin-access-link"><a href="#login">Return to traveller login</a></p></div></section></main>`;
+}
+
+function resetPasswordPage(): string {
+  return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><a href="#login">Back to login</a></header>
+  <main class="login-page"><section class="login-intro"><p class="eyebrow">Account recovery</p><h1>Choose a new password.</h1><p>Pick something you have not used before, then log in again with it.</p></section>
+  <section class="login-panel"><div class="login-card"><h2>New password</h2><p>Your reset link signed you in for this one change.</p><form id="reset-form"><label>New password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label><label>Confirm new password<input type="password" name="confirm" placeholder="Repeat the password" autocomplete="new-password" minlength="8" required /></label><button class="button login-submit" type="submit">Save new password ${icon('arrow')}</button><p class="form-message" role="status"></p></form></div></section></main>`;
 }
 
 function partnerPage(): string {
@@ -147,44 +215,41 @@ function partnerPage(): string {
           <button class="auth-tab" type="button" data-auth-view="login" role="tab" aria-selected="false">Partner login</button>
         </div>
         <div class="auth-heading"><p class="eyebrow">Potli for business</p><h2 class="partner-form-title">Become a partner</h2><p class="partner-form-copy">Tell us a little about you and your business.</p></div>
-        <form id="partner-form">
-          <div class="signup-fields">
+        <form id="partner-form" data-expected-role="storage_partner">
+          <div class="signup-fields" data-signup-only>
             <label>Full name<input type="text" name="name" placeholder="Your full name" autocomplete="name" required /></label>
             <label>Business name<input type="text" name="business" placeholder="Shop, hotel or business name" autocomplete="organization" required /></label>
           </div>
           <label>Email address<input type="email" name="email" placeholder="you@business.com" autocomplete="email" required /></label>
-          <label>Phone number<input type="tel" name="phone" placeholder="+91 98765 43210" autocomplete="tel" required /></label>
+          <label data-signup-only>Phone number<input type="tel" name="phone" placeholder="+91 95803 80494" autocomplete="tel" required /></label>
           <label>Password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label>
-          <label class="partner-terms"><input type="checkbox" required /><span>I agree to Potli's partner terms and verification process.</span></label>
+          <label class="partner-terms" data-signup-only><input type="checkbox" required /><span>I agree to Potli's partner terms and verification process.</span></label>
           <button class="button partner-submit" type="submit">Start earning with Potli ${icon('arrow')}</button>
-          <p class="form-message" role="status"></p>
+          ${noticeField('#partner-signup')}
         </form>
       </div>
     </section>
   </main>`;
 }
 
-function dashboardPage(user: SessionUser): string {
-  const roleCopy: Record<SessionUser['role'], { eyebrow: string; title: string; text: string }> = {
+function dashboardPage(user: CurrentUser): string {
+  const roleCopy: Record<CurrentUser['role'], { eyebrow: string; text: string }> = {
     traveler: {
       eyebrow: 'Traveller dashboard',
-      title: `Namaste, ${user.full_name}.`,
-      text: 'Search nearby storage, track bookings, and check in with QR or OTP. Booking UI lands here next.',
+      text: 'Search nearby storage, track bookings, and check in with QR or OTP.',
     },
     storage_partner: {
       eyebrow: 'Partner dashboard',
-      title: `Namaste, ${user.full_name}.`,
-      text: 'Manage availability, confirm drop-offs and pickups, and track earnings. Partner operations land here next.',
+      text: 'Manage availability, confirm drop-offs and pickups, and track earnings.',
     },
     admin: {
       eyebrow: 'Admin dashboard',
-      title: `Namaste, ${user.full_name}.`,
-      text: 'Verify partners, monitor bookings, and handle disputes. Admin tooling lands here next.',
+      text: 'Verify partners, monitor bookings, and handle disputes.',
     },
   };
   const copy = roleCopy[user.role];
   return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><button class="button button-small" id="logout-button" type="button">Log out</button></header>
-  <main class="login-page"><section class="login-intro"><p class="eyebrow">${copy.eyebrow}</p><h1>${copy.title}</h1><p>${copy.text}</p></section>
+  <main class="login-page"><section class="login-intro"><p class="eyebrow">${copy.eyebrow}</p><h1>Namaste, ${user.full_name}.</h1><p>${copy.text}</p></section>
   <section class="login-panel"><div class="login-card"><h2>Role: ${user.role}</h2><p>${user.email}</p></div></section></main>`;
 }
 
@@ -205,10 +270,14 @@ function wireInteractions(): void {
     (event.currentTarget as HTMLButtonElement).textContent = show ? 'Hide' : 'Show';
   });
   document.querySelector<HTMLFormElement>('#login-form')?.addEventListener('submit', handleLogin);
+  document.querySelector<HTMLFormElement>('#forgot-form')?.addEventListener('submit', handleForgotPassword);
+  document.querySelector<HTMLFormElement>('#reset-form')?.addEventListener('submit', handleResetPassword);
   document.querySelector<HTMLFormElement>('#partner-form')?.addEventListener('submit', handlePartnerAuth);
   document.querySelector<HTMLButtonElement>('#logout-button')?.addEventListener('click', () => {
-    clearSession();
-    window.location.hash = '#home';
+    void supabase.auth.signOut().then(() => {
+      currentUser = null;
+      window.location.hash = '#home';
+    });
   });
 
   document.querySelectorAll<HTMLButtonElement>('.auth-tab').forEach((tab) => tab.addEventListener('click', () => {
@@ -218,9 +287,14 @@ function wireInteractions(): void {
       item.classList.toggle('active', active);
       item.setAttribute('aria-selected', String(active));
     });
-    document.querySelector<HTMLElement>('.signup-fields')?.classList.toggle('is-hidden', isLogin);
-    document.querySelector<HTMLElement>('.partner-terms')?.classList.toggle('is-hidden', isLogin);
-    document.querySelectorAll<HTMLInputElement>('.signup-fields input').forEach((input) => { input.required = !isLogin; });
+    // Signup-only fields (name, business, phone, terms) are hidden AND relaxed in
+    // login mode, otherwise the browser blocks the submit on hidden required
+    // inputs and partner login silently does nothing.
+    document.querySelectorAll<HTMLElement>('[data-signup-only]').forEach((field) => {
+      field.classList.toggle('is-hidden', isLogin);
+      field.querySelectorAll<HTMLInputElement>('input').forEach((input) => { input.required = !isLogin; });
+      if (field instanceof HTMLInputElement) field.required = !isLogin;
+    });
     const title = document.querySelector<HTMLElement>('.partner-form-title');
     const copy = document.querySelector<HTMLElement>('.partner-form-copy');
     const submit = document.querySelector<HTMLButtonElement>('.partner-submit');
@@ -236,21 +310,100 @@ async function handleLogin(event: SubmitEvent): Promise<void> {
   const message = form.querySelector<HTMLElement>('.form-message');
   const data = new FormData(form);
   const submit = form.querySelector<HTMLButtonElement>('[type="submit"]');
+  const expected = (form.dataset.expectedRole ?? 'traveler') as Role;
+  authNotice = null;
   if (message) message.textContent = 'Signing in...';
   if (submit) submit.disabled = true;
+  authTransition = true;
   try {
-    const res = await fetch(`${API_V1}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: data.get('email'), password: data.get('password') }),
+    const { error } = await supabase.auth.signInWithPassword({
+      email: String(data.get('email') ?? ''),
+      password: String(data.get('password') ?? ''),
     });
-    const body = (await res.json()) as { token?: string; user?: SessionUser; error?: string };
-    if (!res.ok || !body.token || !body.user) throw new Error(body.error ?? 'Login failed.');
-    setSession(body.token, body.user);
+    if (error) throw new Error(error.message);
+
+    const user = await loadProfile();
+    if (!user) {
+      await supabase.auth.signOut();
+      throw new Error('Signed in, but no Potli profile was found for this account.');
+    }
+
+    // Each sign-in page accepts only its own role, so an admin cannot walk in
+    // through the traveller login, and a traveller cannot use the admin login.
+    if (user.role !== expected) {
+      await supabase.auth.signOut();
+      currentUser = null;
+      const ownHash =
+        expected === 'admin' ? '#admin-login' : expected === 'storage_partner' ? '#partner-signup' : '#login';
+      authNotice = {
+        route: ownHash,
+        text: `${ROLE_NOUN[user.role]} accounts sign in through the ${LOGIN_PAGE[user.role]}.`,
+      };
+      if (window.location.hash === ownHash) render();
+      else window.location.hash = ownHash;
+      return;
+    }
+
+    currentUser = user;
+    markRecoveryPending(false);
     window.location.hash = '#dashboard';
   } catch (err) {
     if (message) message.textContent = err instanceof Error ? err.message : 'Login failed.';
   } finally {
+    authTransition = false;
+    if (submit) submit.disabled = false;
+  }
+}
+
+async function handleForgotPassword(event: SubmitEvent): Promise<void> {
+  event.preventDefault();
+  const form = event.currentTarget as HTMLFormElement;
+  const message = form.querySelector<HTMLElement>('.form-message');
+  const submit = form.querySelector<HTMLButtonElement>('[type="submit"]');
+  const email = String(new FormData(form).get('email') ?? '');
+  authNotice = null;
+  if (message) message.textContent = 'Sending...';
+  if (submit) submit.disabled = true;
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/`,
+    });
+    if (error) throw new Error(error.message);
+    markRecoveryPending(true);
+    // Same wording either way: a different message for unknown emails would let
+    // anyone probe which addresses have Potli accounts.
+    if (message) message.textContent = 'If that email has a Potli account, a reset link is on its way.';
+  } catch (err) {
+    if (message) message.textContent = err instanceof Error ? err.message : 'Could not send the reset link.';
+  } finally {
+    if (submit) submit.disabled = false;
+  }
+}
+
+async function handleResetPassword(event: SubmitEvent): Promise<void> {
+  event.preventDefault();
+  const form = event.currentTarget as HTMLFormElement;
+  const message = form.querySelector<HTMLElement>('.form-message');
+  const submit = form.querySelector<HTMLButtonElement>('[type="submit"]');
+  const data = new FormData(form);
+  const password = String(data.get('password') ?? '');
+  const confirm = String(data.get('confirm') ?? '');
+  authNotice = null;
+  if (message) message.textContent = 'Saving...';
+  if (submit) submit.disabled = true;
+  authTransition = true;
+  try {
+    if (password !== confirm) throw new Error('The two passwords do not match.');
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw new Error(error.message);
+    markRecoveryPending(false);
+    currentUser = await loadProfile();
+    if (message) message.textContent = 'Password updated. Taking you to your dashboard...';
+    window.location.hash = '#dashboard';
+  } catch (err) {
+    if (message) message.textContent = err instanceof Error ? err.message : 'Could not update the password.';
+  } finally {
+    authTransition = false;
     if (submit) submit.disabled = false;
   }
 }
@@ -261,7 +414,7 @@ function handlePartnerAuth(event: SubmitEvent): void {
   if (!isLogin) {
     event.preventDefault();
     const message = form.querySelector<HTMLElement>('.form-message');
-    if (message) message.textContent = 'Traveller sign-up is coming soon.';
+    if (message) message.textContent = 'Partner sign-up is coming soon.';
     return;
   }
   void handleLogin(event);
@@ -273,24 +426,64 @@ function render(): void {
   document.body.classList.remove('menu-is-open');
   const hash = window.location.hash;
   if (hash === '#dashboard') {
-    const session = getSession();
-    app.innerHTML = session ? dashboardPage(session.user) : loginPage();
+    app.innerHTML = currentUser ? dashboardPage(currentUser) : loginPage();
     wireInteractions();
     return;
   }
-  if ((hash === '#login' || hash === '#admin-login') && getSession()) {
+  if ((hash === '#login' || hash === '#admin-login') && currentUser) {
     window.location.hash = '#dashboard';
     return;
   }
   app.innerHTML = hash === '#login'
     ? loginPage()
     : hash === '#admin-login'
-      ? loginPage(true)
-    : hash === '#partner-signup'
-      ? partnerPage()
-      : landingPage();
+      ? loginPage('admin')
+      : hash === '#partner-signup'
+        ? partnerPage()
+        : hash === '#forgot-password'
+          ? forgotPasswordPage()
+          : hash === '#reset-password'
+            ? resetPasswordPage()
+            : landingPage();
   wireInteractions();
 }
 
+async function init(): Promise<void> {
+  if (!supabaseConfigured) {
+    const app = document.querySelector<HTMLDivElement>('#app');
+    if (app) {
+      app.innerHTML = `<section class="login-panel"><div class="login-card"><h2>Supabase is not configured</h2><p>Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env, then restart the dev server.</p></div></section>`;
+    }
+    return;
+  }
+
+  currentUser = await loadProfile();
+  if (linkError) {
+    // Used or expired reset link: explain it on the request form rather than
+    // dropping the visitor on the marketing page.
+    authNotice = { route: '#forgot-password', text: 'That reset link is invalid or has expired. Request a new one below.' };
+    if (window.location.hash === '#forgot-password') render();
+    else window.location.hash = '#forgot-password';
+  } else if (currentUser && (arrivingFromRecoveryLink || recoveryPending())) {
+    showResetForm();
+  } else {
+    render();
+  }
+
+  // Mirrors sign-in/sign-out/token-refresh events from Supabase Auth.
+  supabase.auth.onAuthStateChange((event, session) => {
+    // A page-level flow is driving the UI; it renders when it is done.
+    if (authTransition) return;
+    void (async () => {
+      currentUser = session ? await loadProfile() : null;
+      if (currentUser && (event === 'PASSWORD_RECOVERY' || arrivingFromRecoveryLink || recoveryPending())) {
+        showResetForm();
+        return;
+      }
+      render();
+    })();
+  });
+}
+
 window.addEventListener('hashchange', render);
-render();
+void init();

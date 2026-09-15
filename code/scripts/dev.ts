@@ -6,37 +6,46 @@
  * waits until each one answers, and tears both down on Ctrl+C or when either
  * process exits. Run "npm run setup" first.
  *
+ * Node runs this file directly through its native TypeScript support.
+ *
  * Usage:
- *   node scripts/dev.mjs
- *   node scripts/dev.mjs --only backend
+ *   node scripts/dev.ts
+ *   node scripts/dev.ts --only backend
  */
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inspectConnectionEnv, isPlaceholderValue, readEnvValue } from './lib/env.ts';
 
 const CODE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const IS_WIN = process.platform === 'win32';
 const NPM = IS_WIN ? 'npm.cmd' : 'npm';
-const DATABASE_URL_PLACEHOLDER = /USER:PASSWORD@HOST/;
 const READY_TIMEOUT_MS = 30_000;
 const KILL_GRACE_MS = 4_000;
-const USAGE = `Usage: node scripts/dev.mjs [options]
+const USAGE = `Usage: node scripts/dev.ts [options]
 
 Options:
   --only <app>  start a single app: backend or frontend
   -h, --help    show this message`;
 
 const useColor = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
-const paint = (code, text) => (useColor ? `\u001b[${code}m${text}\u001b[0m` : text);
-const bold = (t) => paint('1', t);
-const dim = (t) => paint('2', t);
-const green = (t) => paint('32', t);
-const yellow = (t) => paint('33', t);
-const red = (t) => paint('31', t);
-const cyan = (t) => paint('36', t);
+const paint = (code: string, text: string): string => (useColor ? `\u001b[${code}m${text}\u001b[0m` : text);
+const bold = (t: string) => paint('1', t);
+const dim = (t: string) => paint('2', t);
+const green = (t: string) => paint('32', t);
+const yellow = (t: string) => paint('33', t);
+const red = (t: string) => paint('31', t);
+const cyan = (t: string) => paint('36', t);
 
-const APPS = [
+interface App {
+  name: 'backend' | 'frontend';
+  dir: string;
+  url: string;
+  probe: string;
+}
+
+const APPS: App[] = [
   {
     name: 'backend',
     dir: path.join(CODE_DIR, 'backend'),
@@ -51,18 +60,18 @@ const APPS = [
   },
 ];
 
-const children = [];
+const children: ChildProcess[] = [];
 let openChildren = 0;
 let shuttingDown = false;
 let exitCode = 0;
 
-function fail(message) {
+function fail(message: string): never {
   console.error(`${red('error')} ${message}`);
   process.exit(1);
 }
 
-function parseArgs(argv) {
-  const opts = { only: null, help: false };
+function parseArgs(argv: string[]): { only: string | null; help: boolean } {
+  const opts: { only: string | null; help: boolean } = { only: null, help: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') opts.help = true;
@@ -80,18 +89,8 @@ function parseArgs(argv) {
   return opts;
 }
 
-function readEnvValue(dir, key) {
-  const file = path.join(dir, '.env');
-  if (!fs.existsSync(file)) return null;
-  for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
-    if (match && match[1] === key) return match[2].trim().replace(/^["']|["']$/g, '');
-  }
-  return null;
-}
-
-function preflight(apps) {
-  const missing = [];
+function preflight(apps: App[]): void {
+  const missing: string[] = [];
   for (const app of apps) {
     if (!fs.existsSync(path.join(app.dir, 'node_modules'))) missing.push(`${app.name}/node_modules`);
   }
@@ -104,30 +103,46 @@ function preflight(apps) {
     process.exit(1);
   }
 
-  const url = readEnvValue(path.join(CODE_DIR, 'backend'), 'DATABASE_URL');
-  if (apps.some((app) => app.name === 'backend') && (!url || DATABASE_URL_PLACEHOLDER.test(url))) {
-    console.log(
-      `${yellow('warn')}  backend/.env still has no real DATABASE_URL; the API starts but every DB call fails.`,
-    );
-    console.log(`      ${dim('fix it, then: npm run db:setup')}`);
+  const backendDir = path.join(CODE_DIR, 'backend');
+  const frontendDir = path.join(CODE_DIR, 'frontend');
+  const connection = inspectConnectionEnv(backendDir);
+  const supabaseUrl = readEnvValue(backendDir, 'SUPABASE_URL');
+  const anonKey =
+    readEnvValue(backendDir, 'SUPABASE_ANON_KEY') ?? readEnvValue(backendDir, 'SUPABASE_PUBLISHABLE_KEY');
+  const frontendSupabaseUrl = readEnvValue(frontendDir, 'VITE_SUPABASE_URL');
+
+  if (apps.some((app) => app.name === 'backend')) {
+    if (connection.state !== 'configured') {
+      console.log(
+        `${yellow('warn')}  backend/.env has no real Supabase connection string; the API starts but every DB call fails.`,
+      );
+      console.log(`      ${dim('fix it, then: npm run db:setup')}`);
+    }
+    if (isPlaceholderValue(supabaseUrl) || isPlaceholderValue(anonKey)) {
+      console.log(`${yellow('warn')}  backend/.env has no SUPABASE_URL / anon key; sign-in and token checks will fail.`);
+    }
   }
-  if (!fs.existsSync(path.join(CODE_DIR, 'frontend', '.env'))) {
+  if (!fs.existsSync(path.join(frontendDir, '.env'))) {
     console.log(`${yellow('warn')}  frontend/.env missing; the app falls back to http://localhost:4000.`);
+  } else if (isPlaceholderValue(frontendSupabaseUrl)) {
+    console.log(`${yellow('warn')}  frontend/.env has no VITE_SUPABASE_URL; the app shows a setup hint instead of login.`);
   }
 }
 
-function stopChild(child) {
+function stopChild(child: ChildProcess): void {
   if (child.exitCode !== null || child.signalCode !== null) return;
   if (IS_WIN) {
     // npm.cmd runs under a shell, so kill the whole tree.
     spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore' });
     return;
   }
+  const pid = child.pid;
+  if (pid === undefined) return;
   try {
-    process.kill(-child.pid, 'SIGTERM');
+    process.kill(-pid, 'SIGTERM');
     setTimeout(() => {
       try {
-        process.kill(-child.pid, 'SIGKILL');
+        process.kill(-pid, 'SIGKILL');
       } catch {
         /* already gone */
       }
@@ -137,10 +152,10 @@ function stopChild(child) {
   }
 }
 
-function shutdown(code) {
+function shutdown(code: number): void {
   if (shuttingDown) return;
   shuttingDown = true;
-  if (typeof code === 'number') exitCode = code;
+  exitCode = code;
   const live = children.filter((child) => child.exitCode === null && child.signalCode === null);
   for (const child of live) stopChild(child);
   if (live.length === 0) process.exit(exitCode);
@@ -148,7 +163,7 @@ function shutdown(code) {
   setTimeout(() => process.exit(exitCode), KILL_GRACE_MS + 1_000).unref();
 }
 
-function startApp(app) {
+function startApp(app: App): void {
   // Single command string + shell: needed for npm.cmd on Windows, and it keeps
   // the child pid the shell's, which is what the tree kill below targets.
   const child = spawn(`${NPM} run dev`, {
@@ -161,13 +176,12 @@ function startApp(app) {
   openChildren += 1;
   console.log(`${cyan('start')} ${app.name.padEnd(8)} npm run dev ${dim(`(${app.url})`)}`);
 
-  child.on('error', (err) => {
+  child.on('error', (err: Error) => {
     console.error(`${red('error')} ${app.name} failed to start: ${err.message}`);
-    exitCode = 1;
     shutdown(1);
   });
 
-  child.on('close', (code, signal) => {
+  child.on('close', (code: number | null, signal: NodeJS.Signals | null) => {
     openChildren -= 1;
     if (shuttingDown) {
       if (openChildren === 0) process.exit(exitCode);
@@ -175,13 +189,11 @@ function startApp(app) {
     }
     const how = signal ? `signal ${signal}` : `code ${code}`;
     console.error(`\n${red('error')} ${app.name} exited unexpectedly (${how}); stopping the other process.`);
-    if (typeof code === 'number' && code !== 0) exitCode = code;
-    else exitCode = 1;
-    shutdown(exitCode);
+    shutdown(typeof code === 'number' && code !== 0 ? code : 1);
   });
 }
 
-async function waitForReady(probe) {
+async function waitForReady(probe: string): Promise<boolean> {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   while (Date.now() < deadline && !shuttingDown) {
     try {
@@ -194,7 +206,7 @@ async function waitForReady(probe) {
   return false;
 }
 
-async function main() {
+async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) {
     console.log(USAGE);
@@ -229,4 +241,4 @@ async function main() {
   }
 }
 
-main();
+void main();
