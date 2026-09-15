@@ -1,0 +1,24 @@
+{
+  "name": "@potli/db",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Potli database workspace: Drizzle schema, migrations and dev seed",
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "migrate": "node scripts/migrate.ts",
+    "seed": "node scripts/seed.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^5.9.3"
+  }
+}
