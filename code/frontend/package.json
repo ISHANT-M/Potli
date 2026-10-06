@@ -9,13 +9,13 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.58.0"
-  },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.14",
     "tailwindcss": "^4.1.14",
     "typescript": "^5.9.3",
     "vite": "^7.1.9"
+  },
+  "dependencies": {
+    "appwrite": "^28.1.0"
   }
 }

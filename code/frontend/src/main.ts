@@ -1,5 +1,5 @@
 import './styles.css';
-import { arrivingFromRecoveryLink, linkError, supabase, supabaseConfigured } from './supabase';
+import { account, appwriteConfigured, clearRecoveryLink, recoveryLink } from './appwrite';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 const API_V1 = `${API_BASE}/api/v1`;
@@ -32,20 +32,9 @@ const ROLE_NOUN: Record<Role, string> = {
   admin: 'Admin',
 };
 
-// Session state is owned by Supabase Auth (persisted and refreshed by supabase-js).
 let currentUser: CurrentUser | null = null;
-// Set when the user asks for a reset link, so the emailed link lands on the
-// password form instead of the dashboard.
-const RECOVERY_FLAG = 'potli_recovery';
 
-// While a page-level flow (sign-in, password reset) owns the UI, the auth-state
-// listener stays out of the way: otherwise it would render the dashboard the
-// moment credentials are accepted, before the role check has run.
-let authTransition = false;
-// One-shot notice for a specific page (role mix-ups, dead reset links). It is
-// keyed by route and survives re-renders of that page, because the auth-state
-// listener may render again right after a flow sets it; it is cleared when the
-// visitor starts a new attempt.
+// Route-scoped notices survive unrelated renders.
 let authNotice: { route: string; text: string } | null = null;
 
 function noticeField(route: string): string {
@@ -53,30 +42,21 @@ function noticeField(route: string): string {
   return `<p class="form-message" role="status">${notice}</p>`;
 }
 
-function markRecoveryPending(pending: boolean): void {
-  if (pending) sessionStorage.setItem(RECOVERY_FLAG, '1');
-  else sessionStorage.removeItem(RECOVERY_FLAG);
-}
-
-function recoveryPending(): boolean {
-  return sessionStorage.getItem(RECOVERY_FLAG) === '1';
-}
-
-// A reset link signs the user in for one password change, so it goes to the
-// password form rather than the dashboard.
 function showResetForm(): void {
-  markRecoveryPending(true);
   if (window.location.hash === '#reset-password') render();
   else window.location.hash = '#reset-password';
 }
 
 async function loadProfile(): Promise<CurrentUser | null> {
-  const { data } = await supabase.auth.getSession();
-  const accessToken = data.session?.access_token;
-  if (!accessToken) return null;
+  let jwt: string;
+  try {
+    jwt = (await account.createJWT()).jwt;
+  } catch {
+    return null; // no session cookie: signed out
+  }
 
   const res = await fetch(`${API_V1}/auth/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${jwt}` },
   });
   if (!res.ok) return null;
   const body = (await res.json()) as { user?: SessionUser };
@@ -192,7 +172,7 @@ function forgotPasswordPage(): string {
 function resetPasswordPage(): string {
   return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><a href="#login">Back to login</a></header>
   <main class="login-page"><section class="login-intro"><p class="eyebrow">Account recovery</p><h1>Choose a new password.</h1><p>Pick something you have not used before, then log in again with it.</p></section>
-  <section class="login-panel"><div class="login-card"><h2>New password</h2><p>Your reset link signed you in for this one change.</p><form id="reset-form"><label>New password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label><label>Confirm new password<input type="password" name="confirm" placeholder="Repeat the password" autocomplete="new-password" minlength="8" required /></label><button class="button login-submit" type="submit">Save new password ${icon('arrow')}</button><p class="form-message" role="status"></p></form></div></section></main>`;
+  <section class="login-panel"><div class="login-card"><h2>New password</h2><p>Pick something you have not used before.</p><form id="reset-form"><label>New password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label><label>Confirm new password<input type="password" name="confirm" placeholder="Repeat the password" autocomplete="new-password" minlength="8" required /></label><button class="button login-submit" type="submit">Save new password ${icon('arrow')}</button>${noticeField('#reset-password')}</form></div></section></main>`;
 }
 
 function partnerPage(): string {
@@ -274,10 +254,13 @@ function wireInteractions(): void {
   document.querySelector<HTMLFormElement>('#reset-form')?.addEventListener('submit', handleResetPassword);
   document.querySelector<HTMLFormElement>('#partner-form')?.addEventListener('submit', handlePartnerAuth);
   document.querySelector<HTMLButtonElement>('#logout-button')?.addEventListener('click', () => {
-    void supabase.auth.signOut().then(() => {
-      currentUser = null;
-      window.location.hash = '#home';
-    });
+    void account
+      .deleteSession({ sessionId: 'current' })
+      .catch(() => undefined) // an expired session is still a sign-out
+      .then(() => {
+        currentUser = null;
+        window.location.hash = '#home';
+      });
   });
 
   document.querySelectorAll<HTMLButtonElement>('.auth-tab').forEach((tab) => tab.addEventListener('click', () => {
@@ -287,9 +270,8 @@ function wireInteractions(): void {
       item.classList.toggle('active', active);
       item.setAttribute('aria-selected', String(active));
     });
-    // Signup-only fields (name, business, phone, terms) are hidden AND relaxed in
-    // login mode, otherwise the browser blocks the submit on hidden required
-    // inputs and partner login silently does nothing.
+    // Hidden required inputs still block submission; relax them in login mode.
+
     document.querySelectorAll<HTMLElement>('[data-signup-only]').forEach((field) => {
       field.classList.toggle('is-hidden', isLogin);
       field.querySelectorAll<HTMLInputElement>('input').forEach((input) => { input.required = !isLogin; });
@@ -314,24 +296,22 @@ async function handleLogin(event: SubmitEvent): Promise<void> {
   authNotice = null;
   if (message) message.textContent = 'Signing in...';
   if (submit) submit.disabled = true;
-  authTransition = true;
   try {
-    const { error } = await supabase.auth.signInWithPassword({
+    // Discard stale sessions before checking the new account's role.
+    await account.deleteSession({ sessionId: 'current' }).catch(() => undefined);
+    await account.createEmailPasswordSession({
       email: String(data.get('email') ?? ''),
       password: String(data.get('password') ?? ''),
     });
-    if (error) throw new Error(error.message);
 
     const user = await loadProfile();
     if (!user) {
-      await supabase.auth.signOut();
+      await account.deleteSession({ sessionId: 'current' }).catch(() => undefined);
       throw new Error('Signed in, but no Potli profile was found for this account.');
     }
 
-    // Each sign-in page accepts only its own role, so an admin cannot walk in
-    // through the traveller login, and a traveller cannot use the admin login.
     if (user.role !== expected) {
-      await supabase.auth.signOut();
+      await account.deleteSession({ sessionId: 'current' }).catch(() => undefined);
       currentUser = null;
       const ownHash =
         expected === 'admin' ? '#admin-login' : expected === 'storage_partner' ? '#partner-signup' : '#login';
@@ -345,12 +325,10 @@ async function handleLogin(event: SubmitEvent): Promise<void> {
     }
 
     currentUser = user;
-    markRecoveryPending(false);
     window.location.hash = '#dashboard';
   } catch (err) {
     if (message) message.textContent = err instanceof Error ? err.message : 'Login failed.';
   } finally {
-    authTransition = false;
     if (submit) submit.disabled = false;
   }
 }
@@ -365,16 +343,15 @@ async function handleForgotPassword(event: SubmitEvent): Promise<void> {
   if (message) message.textContent = 'Sending...';
   if (submit) submit.disabled = true;
   try {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/`,
+    await account.createRecovery({
+      email,
+      url: window.location.origin,
     });
-    if (error) throw new Error(error.message);
-    markRecoveryPending(true);
-    // Same wording either way: a different message for unknown emails would let
-    // anyone probe which addresses have Potli accounts.
+    // Avoid revealing whether the address has an account.
     if (message) message.textContent = 'If that email has a Potli account, a reset link is on its way.';
   } catch (err) {
-    if (message) message.textContent = err instanceof Error ? err.message : 'Could not send the reset link.';
+    const text = err instanceof Error ? err.message : 'Could not send the reset link.';
+    if (message) message.textContent = /smtp|mail/i.test(text) ? `Mail is not configured yet: ${text}` : text;
   } finally {
     if (submit) submit.disabled = false;
   }
@@ -391,19 +368,21 @@ async function handleResetPassword(event: SubmitEvent): Promise<void> {
   authNotice = null;
   if (message) message.textContent = 'Saving...';
   if (submit) submit.disabled = true;
-  authTransition = true;
   try {
     if (password !== confirm) throw new Error('The two passwords do not match.');
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) throw new Error(error.message);
-    markRecoveryPending(false);
+    if (!recoveryLink) throw new Error('This reset link is missing its secret. Request a new one.');
+    await account.updateRecovery({
+      userId: recoveryLink.userId,
+      secret: recoveryLink.secret,
+      password,
+    });
+    clearRecoveryLink();
     currentUser = await loadProfile();
     if (message) message.textContent = 'Password updated. Taking you to your dashboard...';
     window.location.hash = '#dashboard';
   } catch (err) {
     if (message) message.textContent = err instanceof Error ? err.message : 'Could not update the password.';
   } finally {
-    authTransition = false;
     if (submit) submit.disabled = false;
   }
 }
@@ -449,40 +428,20 @@ function render(): void {
 }
 
 async function init(): Promise<void> {
-  if (!supabaseConfigured) {
+  if (!appwriteConfigured) {
     const app = document.querySelector<HTMLDivElement>('#app');
     if (app) {
-      app.innerHTML = `<section class="login-panel"><div class="login-card"><h2>Supabase is not configured</h2><p>Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env, then restart the dev server.</p></div></section>`;
+      app.innerHTML = `<section class="login-panel"><div class="login-card"><h2>Appwrite is not configured</h2><p>Set VITE_APPWRITE_ENDPOINT and VITE_APPWRITE_PROJECT_ID in frontend/.env, then restart the dev server.</p></div></section>`;
     }
     return;
   }
 
   currentUser = await loadProfile();
-  if (linkError) {
-    // Used or expired reset link: explain it on the request form rather than
-    // dropping the visitor on the marketing page.
-    authNotice = { route: '#forgot-password', text: 'That reset link is invalid or has expired. Request a new one below.' };
-    if (window.location.hash === '#forgot-password') render();
-    else window.location.hash = '#forgot-password';
-  } else if (currentUser && (arrivingFromRecoveryLink || recoveryPending())) {
+  if (recoveryLink) {
     showResetForm();
-  } else {
-    render();
+    return;
   }
-
-  // Mirrors sign-in/sign-out/token-refresh events from Supabase Auth.
-  supabase.auth.onAuthStateChange((event, session) => {
-    // A page-level flow is driving the UI; it renders when it is done.
-    if (authTransition) return;
-    void (async () => {
-      currentUser = session ? await loadProfile() : null;
-      if (currentUser && (event === 'PASSWORD_RECOVERY' || arrivingFromRecoveryLink || recoveryPending())) {
-        showResetForm();
-        return;
-      }
-      render();
-    })();
-  });
+  render();
 }
 
 window.addEventListener('hashchange', render);
