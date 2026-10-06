@@ -1,29 +1,20 @@
-/**
- * Applies supabase/migrations in filename order.
- *
- * Versions are recorded in supabase_migrations.schema_migrations, the same table
- * the Supabase CLI uses, so `supabase db push` and this script can be used
- * interchangeably.
- *
- * This is TypeScript executed by Node's native type stripping, so the types are
- * erased at load time and `tsc` is what checks them.
- */
+/** Apply SQL files in filename order; record each migration in the same transaction. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { createDb } from '../client.ts';
-import { MIGRATIONS_DIR, SUPABASE_DB_URL, requireDatabaseUrl } from '../env.ts';
+import { createDbWithToken } from '../client.ts';
+import { DATABASE_URL, MIGRATIONS_DIR, requireDatabaseUrl } from '../env.ts';
 import { describeDbError } from '../errors.ts';
 
-const MIGRATION_PATTERN = /^(\d{14})_(.+)\.sql$/;
+const MIGRATION_EXTENSION = '.sql';
 
 async function main(): Promise<void> {
   requireDatabaseUrl();
-  const { pool } = createDb(SUPABASE_DB_URL);
+  const { pool } = await createDbWithToken(DATABASE_URL);
 
   try {
     const files = fs
       .readdirSync(MIGRATIONS_DIR)
-      .filter((file) => MIGRATION_PATTERN.test(file))
+      .filter((file) => file.endsWith(MIGRATION_EXTENSION))
       .sort();
 
     if (files.length === 0) {
@@ -31,27 +22,18 @@ async function main(): Promise<void> {
       return;
     }
 
-    // Same bookkeeping table the Supabase CLI uses, so one migration history is
-    // shared between the CLI and this script.
-    await pool.query('create schema if not exists supabase_migrations');
-    await pool.query(`create table if not exists supabase_migrations.schema_migrations (
+    await pool.query(`create table if not exists migrations (
       version text primary key,
       name text,
-      statements text[],
       applied_at timestamptz not null default now()
     )`);
 
-    const { rows } = await pool.query<{ version: string }>(
-      'select version from supabase_migrations.schema_migrations',
-    );
+    const { rows } = await pool.query<{ version: string }>('select version from migrations');
     const applied = new Set(rows.map((row) => row.version));
 
     let count = 0;
     for (const file of files) {
-      const match = MIGRATION_PATTERN.exec(file);
-      const version = match?.[1];
-      const name = match?.[2];
-      if (!version || !name) continue;
+      const version = file.slice(0, -MIGRATION_EXTENSION.length);
       if (applied.has(version)) {
         console.log(`skip    ${file}`);
         continue;
@@ -62,11 +44,7 @@ async function main(): Promise<void> {
       try {
         await client.query('begin');
         await client.query(sql);
-        await client.query(
-          `insert into supabase_migrations.schema_migrations (version, name, statements)
-           values ($1, $2, $3)`,
-          [version, name, [sql]],
-        );
+        await client.query('insert into migrations (version, name) values ($1, $2)', [version, file]);
         await client.query('commit');
       } catch (err) {
         await client.query('rollback');
@@ -78,7 +56,7 @@ async function main(): Promise<void> {
       count += 1;
     }
 
-    console.log(`${count} migration(s) applied to Supabase Postgres`);
+    console.log(`${count} migration(s) applied`);
   } finally {
     await pool.end();
   }

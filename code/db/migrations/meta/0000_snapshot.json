@@ -1,28 +1,9 @@
 {
-  "id": "c45f1f67-cb26-481d-b692-189b75d22c7e",
+  "id": "f8823f97-2c98-43cb-9494-ec0917cbd690",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "auth.users": {
-      "name": "users",
-      "schema": "auth",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.partner_profiles": {
       "name": "partner_profiles",
       "schema": "",
@@ -85,6 +66,13 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "appwrite_user_id": {
+          "name": "appwrite_user_id",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true
         },
         "email": {
@@ -140,24 +128,17 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "profiles_id_users_id_fk": {
-          "name": "profiles_id_users_id_fk",
-          "tableFrom": "profiles",
-          "tableTo": "users",
-          "schemaTo": "auth",
-          "columnsFrom": [
-            "id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "profiles_appwrite_user_id_unique": {
+          "name": "profiles_appwrite_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "appwrite_user_id"
+          ]
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
