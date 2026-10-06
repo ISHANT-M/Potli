@@ -4,13 +4,11 @@ const read = (name: string): string => (process.env[name] ?? '').trim();
 
 export const PORT = Number(read('PORT') || 4000);
 
-// Supabase project (Dashboard -> Project Settings -> API).
-export const SUPABASE_URL = read('SUPABASE_URL');
-// "anon" / "publishable" key: safe to expose, used to verify user tokens.
-export const SUPABASE_ANON_KEY = read('SUPABASE_ANON_KEY') || read('SUPABASE_PUBLISHABLE_KEY');
+export const APPWRITE_ENDPOINT = read('APPWRITE_ENDPOINT').replace(/\/$/, '');
+export const APPWRITE_PROJECT_ID = read('APPWRITE_PROJECT_ID');
+export const APPWRITE_API_KEY = read('APPWRITE_API_KEY');
 
-// Supabase Postgres (session pooler).
-export const SUPABASE_DB_URL = read('SUPABASE_DB_URL');
+export const DATABASE_URL = read('DATABASE_URL');
 
 export const DEV_SEED_PASSWORD = read('DEV_SEED_PASSWORD') || 'Potli123!';
 
@@ -24,8 +22,8 @@ export function requireEnv(checks: EnvCheck[]): void {
   }
 }
 
-export const SUPABASE_REQUIRED: EnvCheck[] = [
-  ['SUPABASE_URL', SUPABASE_URL],
-  ['SUPABASE_ANON_KEY', SUPABASE_ANON_KEY],
-  ['SUPABASE_DB_URL', SUPABASE_DB_URL],
+export const REQUIRED: EnvCheck[] = [
+  ['APPWRITE_ENDPOINT', APPWRITE_ENDPOINT],
+  ['APPWRITE_PROJECT_ID', APPWRITE_PROJECT_ID],
+  ['DATABASE_URL', DATABASE_URL],
 ];

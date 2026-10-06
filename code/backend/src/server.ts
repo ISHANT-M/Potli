@@ -1,11 +1,11 @@
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
-import { PORT, SUPABASE_REQUIRED, requireEnv } from './config.ts';
-import { describeDbError, isDatabaseError, loadProfile, pool, query } from './db.ts';
-import { authReachable, supabaseAuth, toPublicUser, userFromAccessToken } from './supabase.ts';
-import type { PublicUser } from './supabase.ts';
+import { PORT, REQUIRED, requireEnv } from './config.ts';
+import { ensureProfile, describeDbError, isDatabaseError, loadProfile, pool, query } from './db.ts';
+import { accountFromJwt, authReachable, signInWithPassword, toPublicUser } from './appwrite.ts';
+import type { PublicUser } from './appwrite.ts';
 
-requireEnv(SUPABASE_REQUIRED);
+requireEnv(REQUIRED);
 
 const app = express();
 app.use(cors());
@@ -13,8 +13,7 @@ app.use(express.json());
 
 type Handler = (req: Request, res: Response, next: NextFunction) => Promise<unknown> | unknown;
 
-// Async route handlers: without this a rejected promise becomes an unhandled
-// rejection and Node kills the process, which reads as "the backend is down".
+// Forward rejected handlers to Express error middleware.
 const asyncHandler =
   (handler: Handler) => (req: Request, res: Response, next: NextFunction): void => {
     Promise.resolve(handler(req, res, next)).catch(next);
@@ -25,11 +24,17 @@ function bearerToken(req: Request): string | null {
   return scheme === 'Bearer' && token ? token : null;
 }
 
+/** Verify identity in Appwrite; resolve or create the profile in Postgres. */
 async function authenticatedUser(req: Request): Promise<PublicUser | null> {
-  const authUser = await userFromAccessToken(bearerToken(req));
-  if (!authUser) return null;
-  const profile = await loadProfile(authUser.id);
-  return toPublicUser(profile, authUser);
+  const account = await accountFromJwt(bearerToken(req));
+  if (!account) return null;
+  const profile = await ensureProfile({
+    appwriteUserId: account.$id,
+    email: account.email,
+    fullName: account.name ?? '',
+    role: 'traveler',
+  });
+  return toPublicUser(profile, account);
 }
 
 const v1 = express.Router();
@@ -50,27 +55,21 @@ v1.get('/health', asyncHandler(async (_req, res) => {
   res.json({ ok: auth, db: true, auth });
 }));
 
-// Server-side sign-in for API clients; the browser uses supabase-js directly.
+// API-client login; the browser uses Appwrite's SDK.
 v1.post('/auth/login', asyncHandler(async (req, res) => {
   const { email, password } = (req.body ?? {}) as { email?: unknown; password?: unknown };
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
 
-  const { data, error } = await supabaseAuth.auth.signInWithPassword({
-    email: String(email),
-    password: String(password),
-  });
-  if (error) return res.status(401).json({ error: error.message });
-  if (!data.session) return res.status(401).json({ error: 'Sign-in did not return a session.' });
+  const result = await signInWithPassword(String(email), String(password));
+  if ('error' in result) return res.status(401).json({ error: result.error });
 
-  const profile = await loadProfile(data.user.id);
-  res.json({
-    token: data.session.access_token,
-    refresh_token: data.session.refresh_token,
-    expires_at: data.session.expires_at,
-    user: toPublicUser(profile, data.user),
-  });
+  const account = await accountFromJwt(result.jwt);
+  if (!account) return res.status(401).json({ error: 'Sign-in did not return a usable token.' });
+
+  const profile = await loadProfile(account.$id);
+  res.json({ token: result.jwt, user: toPublicUser(profile, account) });
 }));
 
 v1.get('/auth/me', asyncHandler(async (req, res) => {
@@ -81,14 +80,6 @@ v1.get('/auth/me', asyncHandler(async (req, res) => {
 
 app.use('/api/v1', v1);
 
-// Deprecated unversioned aliases; remove after clients migrate.
-app.use('/api', (_req: Request, res: Response, next: NextFunction) => {
-  res.set('Deprecation', 'true');
-  res.set('Sunset', 'Sat, 01 Nov 2025 00:00:00 GMT');
-  next();
-}, v1);
-
-// Keep the process alive on request failures: async handler errors land here.
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('api error:', err.message);
   if (res.headersSent) return;
