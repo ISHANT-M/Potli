@@ -1,26 +1,15 @@
-/**
- * Shared .env reading for the dev scripts (setup + dev).
- *
- * Only unambiguous local checks live here: whether a key exists and whether its
- * value is still the .env.example template. A value that is present but wrong is
- * handed to pg as-is, because Postgres reports the real reason far better than
- * any local check could.
- *
- * Node runs this file directly through its native TypeScript support (types are
- * stripped at load).
- */
+/** Shared env checks for setup and dev; connection errors come from Postgres. */
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** The one connection string the project uses. */
-export const DB_URL_KEYS = ['SUPABASE_DB_URL'];
+export const DB_URL_KEYS = ['DATABASE_URL'];
 
-/** Any one of these means Supabase Auth is configured for the backend. */
-export const SUPABASE_URL_KEYS = ['SUPABASE_URL'];
-export const SUPABASE_ANON_KEYS = ['SUPABASE_ANON_KEY', 'SUPABASE_PUBLISHABLE_KEY'];
+export const APPWRITE_ENDPOINT_KEYS = ['APPWRITE_ENDPOINT'];
+export const APPWRITE_PROJECT_KEYS = ['APPWRITE_PROJECT_ID'];
+export const FRONTEND_APPWRITE_ENDPOINT_KEYS = ['VITE_APPWRITE_ENDPOINT'];
+export const FRONTEND_APPWRITE_PROJECT_KEYS = ['VITE_APPWRITE_PROJECT_ID'];
 
-// The templates ship in .env.example as "postgres.PROJECT-REF:..." (Supabase).
-const PLACEHOLDER = /(PROJECT-REF|PASSWORD@)/;
+const PLACEHOLDER = /(PASSWORD@|^$)/;
 
 export type ConnectionState = 'configured' | 'missing-env' | 'missing-key' | 'empty' | 'placeholder';
 
@@ -32,25 +21,23 @@ export interface ConnectionInfo {
   value?: string;
 }
 
-export function readEnvValue(dir: string, key: string): string | null {
+export function readEnvValue(dir: string, keys: string | string[]): string | null {
+  const wanted = Array.isArray(keys) ? keys : [keys];
   const file = path.join(dir, '.env');
   if (!fs.existsSync(file)) return null;
   for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
     const match = /^\s*([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line);
-    if (match?.[1] === key) return (match[2] ?? '').trim().replace(/^["']|["']$/g, '');
+    if (match?.[1] && wanted.includes(match[1])) return (match[2] ?? '').trim().replace(/^["']|["']$/g, '');
   }
   return null;
 }
 
-/** True when the key is absent, empty, or still the .env.example template. */
+
 export function isPlaceholderValue(value: string | null): boolean {
   return !value || PLACEHOLDER.test(value);
 }
 
-/**
- * Which Postgres connection string the backend will use, and why it is (not)
- * usable yet. `where` is an absolute "path:line" reference for messages.
- */
+/** Report connection configuration with path:line references. */
 export function inspectConnectionEnv(backendDir: string): ConnectionInfo {
   const file = path.join(backendDir, '.env');
   if (!fs.existsSync(file)) return { state: 'missing-env', file };

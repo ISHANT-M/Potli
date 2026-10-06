@@ -1,20 +1,5 @@
 #!/usr/bin/env node
-/**
- * Potli dev bootstrap.
- *
- * Installs dependencies for the launcher and each workspace, creates local .env
- * files from the checked-in examples, and applies the db workspace migrations
- * plus seed data. Idempotent: safe to re-run.
- *
- * Node runs this file directly through its native TypeScript support (types are
- * stripped at load), so there is no build step for dev tooling.
- *
- * Usage:
- *   node scripts/setup.ts                  # deps + .env, then DB if the URL is real
- *   node scripts/setup.ts --ci             # clean install from package-lock.json
- *   node scripts/setup.ts --only db --with-db
- *   node scripts/setup.ts --force-env      # regenerate .env from .env.example
- */
+/** Install dependencies, create missing env files, and migrate/seed configured databases. */
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,7 +9,7 @@ import { DB_URL_KEYS, inspectConnectionEnv, type ConnectionState } from './lib/e
 const CODE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const IS_WIN = process.platform === 'win32';
 const NPM = IS_WIN ? 'npm.cmd' : 'npm';
-/** Workspaces that own a package.json and get `npm install` run in them. */
+
 const WORKSPACES = ['frontend', 'backend', 'db'];
 const TARGETS = [...WORKSPACES];
 const USAGE = `Usage: node scripts/setup.ts [options]
@@ -103,9 +88,8 @@ function parseArgs(argv: string[]): Options {
   return opts;
 }
 
-// npm is a .cmd shim on Windows, so it always goes through a shell. The command
-// is a single string (never an args array) to stay clear of DEP0190; every
-// argument here is a literal, so there is nothing to escape.
+// A command string supports npm.cmd without triggering DEP0190.
+
 function runNpm(args: string[], cwd: string): SpawnSyncReturns<Buffer> {
   step(path.basename(cwd), `npm ${args.join(' ')}`);
   return spawnSync(`${NPM} ${args.join(' ')}`, { cwd, stdio: 'inherit', shell: true });
@@ -139,8 +123,7 @@ function preflight(): void {
 
 function installDeps(opts: Options, workspaces: string[]): boolean {
   let ok = true;
-  // The launcher and typecheck tooling live in the root package, so a full run
-  // installs them too; a targeted --only run leaves the root alone.
+
   if (!opts.only) ok = npmInstall(opts, CODE_DIR, 'code') && ok;
   for (const workspace of workspaces) {
     ok = npmInstall(opts, path.join(CODE_DIR, workspace), workspace) && ok;
@@ -167,7 +150,7 @@ function ensureEnv(opts: Options, workspaces: string[]): void {
   }
 }
 
-function runDatabase(opts: Options): boolean {
+async function runDatabase(opts: Options): Promise<boolean> {
   const backendDir = path.join(CODE_DIR, 'backend');
   const dbDir = path.join(CODE_DIR, 'db');
   const info = inspectConnectionEnv(backendDir);
@@ -182,10 +165,11 @@ function runDatabase(opts: Options): boolean {
   if (info.state !== 'configured') {
     const messages: Record<Exclude<ConnectionState, 'configured'>, [detail: string, hint: string]> = {
       'missing-env': [`${rel} does not exist yet`, 'run "npm run setup" to create it'],
-      'missing-key': [`${rel} has no ${DB_URL_KEYS.join(' or ')} line`, 'add one, see backend/.env.example'],      empty: [`${where} is empty`, `set ${info.key} to your Supabase connection string`],
+      'missing-key': [`${rel} has no ${DB_URL_KEYS.join(' or ')} line`, 'add one, see backend/.env.example'],
+      empty: [`${where} is empty`, `set ${info.key} to the Postgres connection string`],
       placeholder: [
         `${where} still holds the .env.example template`,
-        `replace ${info.key} with your Supabase connection string (Dashboard -> Connect)`,
+        `replace ${info.key} with the Postgres connection string (see backend/.env.example)`,
       ],
     };
     const [detail, hint] = messages[info.state];
@@ -200,7 +184,7 @@ function runDatabase(opts: Options): boolean {
   }
 
   const value = info.value ?? '';
-  const key = info.key ?? DB_URL_KEYS[0] ?? 'SUPABASE_DB_URL';
+  const key = info.key ?? DB_URL_KEYS[0] ?? 'DATABASE_URL';
   for (const script of ['migrate', 'seed']) {
     const result = runNpm(['run', script], dbDir);
     if (result.status !== 0) {
@@ -211,7 +195,7 @@ function runDatabase(opts: Options): boolean {
       return false;
     }
   }
-  record('db', 'ok', `Supabase migrations applied and dev accounts seeded (${where})`);
+  record('db', 'ok', `migrations applied and dev accounts seeded (${where})`);
   return true;
 }
 
@@ -224,7 +208,7 @@ function printSummary(): void {
   }
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) {
     console.log(USAGE);
@@ -239,7 +223,7 @@ function main(): void {
   let ok = true;
   ok = installDeps(opts, workspaces) && ok;
   ensureEnv(opts, workspaces);
-  if (selected.includes('db')) ok = runDatabase(opts) && ok;
+  if (selected.includes('db')) ok = (await runDatabase(opts)) && ok;
 
   printSummary();
   if (!ok) {

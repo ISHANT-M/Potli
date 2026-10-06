@@ -1,22 +1,18 @@
 #!/usr/bin/env node
-/**
- * Potli dev launcher.
- *
- * Starts the backend (Express, :4000) and the frontend (Vite, :5173) together,
- * waits until each one answers, and tears both down on Ctrl+C or when either
- * process exits. Run "npm run setup" first.
- *
- * Node runs this file directly through its native TypeScript support.
- *
- * Usage:
- *   node scripts/dev.ts
- *   node scripts/dev.ts --only backend
- */
+/** Start both apps, check readiness, and stop them together. */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectConnectionEnv, isPlaceholderValue, readEnvValue } from './lib/env.ts';
+import {
+  APPWRITE_ENDPOINT_KEYS,
+  APPWRITE_PROJECT_KEYS,
+  FRONTEND_APPWRITE_ENDPOINT_KEYS,
+  FRONTEND_APPWRITE_PROJECT_KEYS,
+  inspectConnectionEnv,
+  isPlaceholderValue,
+  readEnvValue,
+} from './lib/env.ts';
 
 const CODE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const IS_WIN = process.platform === 'win32';
@@ -106,26 +102,34 @@ function preflight(apps: App[]): void {
   const backendDir = path.join(CODE_DIR, 'backend');
   const frontendDir = path.join(CODE_DIR, 'frontend');
   const connection = inspectConnectionEnv(backendDir);
-  const supabaseUrl = readEnvValue(backendDir, 'SUPABASE_URL');
-  const anonKey =
-    readEnvValue(backendDir, 'SUPABASE_ANON_KEY') ?? readEnvValue(backendDir, 'SUPABASE_PUBLISHABLE_KEY');
-  const frontendSupabaseUrl = readEnvValue(frontendDir, 'VITE_SUPABASE_URL');
+  const appwriteEndpoint = readEnvValue(backendDir, APPWRITE_ENDPOINT_KEYS);
+  const appwriteProject = readEnvValue(backendDir, APPWRITE_PROJECT_KEYS);
+  const frontendEndpoint = readEnvValue(frontendDir, FRONTEND_APPWRITE_ENDPOINT_KEYS);
+  const frontendProject = readEnvValue(frontendDir, FRONTEND_APPWRITE_PROJECT_KEYS);
 
   if (apps.some((app) => app.name === 'backend')) {
     if (connection.state !== 'configured') {
       console.log(
-        `${yellow('warn')}  backend/.env has no real Supabase connection string; the API starts but every DB call fails.`,
+        `${yellow('warn')}  backend/.env has no real DATABASE_URL; the API starts but every DB call fails.`,
       );
-      console.log(`      ${dim('fix it, then: npm run db:setup')}`);
+      console.log(`      ${dim('fix it, then: npm run db:migrate && npm run db:seed')}`);
     }
-    if (isPlaceholderValue(supabaseUrl) || isPlaceholderValue(anonKey)) {
-      console.log(`${yellow('warn')}  backend/.env has no SUPABASE_URL / anon key; sign-in and token checks will fail.`);
+    const wsProxy = readEnvValue(backendDir, 'DATABASE_WS_PROXY');
+    if (wsProxy) {
+      console.log(`${cyan('db')}      through the Postgres wire-protocol proxy at ${wsProxy}`);
+    }
+    if (isPlaceholderValue(appwriteEndpoint) || isPlaceholderValue(appwriteProject)) {
+      console.log(
+        `${yellow('warn')}  backend/.env has no APPWRITE_ENDPOINT / APPWRITE_PROJECT_ID; sign-in and token checks will fail.`,
+      );
     }
   }
   if (!fs.existsSync(path.join(frontendDir, '.env'))) {
     console.log(`${yellow('warn')}  frontend/.env missing; the app falls back to http://localhost:4000.`);
-  } else if (isPlaceholderValue(frontendSupabaseUrl)) {
-    console.log(`${yellow('warn')}  frontend/.env has no VITE_SUPABASE_URL; the app shows a setup hint instead of login.`);
+  } else if (isPlaceholderValue(frontendEndpoint) || isPlaceholderValue(frontendProject)) {
+    console.log(
+      `${yellow('warn')}  frontend/.env has no VITE_APPWRITE_ENDPOINT / VITE_APPWRITE_PROJECT_ID; the app shows a setup hint instead of login.`,
+    );
   }
 }
 
@@ -164,8 +168,8 @@ function shutdown(code: number): void {
 }
 
 function startApp(app: App): void {
-  // Single command string + shell: needed for npm.cmd on Windows, and it keeps
-  // the child pid the shell's, which is what the tree kill below targets.
+  // npm.cmd requires a shell on Windows.
+
   const child = spawn(`${NPM} run dev`, {
     cwd: app.dir,
     stdio: 'inherit',
