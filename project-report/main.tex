@@ -1,8 +1,11 @@
 \documentclass{tietreport}
 
 \usepackage{graphicx}
-\usepackage{float}
-\usepackage{longtable}
+\usepackage{array}
+\usepackage{xurl}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+
 \usepackage{booktabs}
 \usepackage{enumitem}
 \setlength{\headheight}{15pt}
@@ -23,8 +26,9 @@
   eprint=false
 ]{biblatex}
 \addbibresource{references.bib}
+\AtBeginBibliography{\raggedright}
 
-\graphicspath{{figures/}}
+\graphicspath{{../assets/}}
 \newcommand{\implemented}{\textbf{Implemented}}
 \newcommand{\planned}{\textbf{Planned}}
 
@@ -47,14 +51,17 @@
 }
 
 \begin{document}
+\raggedbottom
+\hypersetup{pageanchor=false}
 \maketitle
 
 \pagenumbering{roman}
+\hypersetup{pageanchor=true}
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-POTLI is a web-based luggage-storage network intended to connect travelers with verified shops, hotels, and other local businesses that have spare storage capacity. The system addresses a practical gap in Indian cities, particularly tier-2 and tier-3 locations, where short-term luggage storage is scarce and difficult to discover. A traveler can locate a nearby partner, reserve capacity, and use a QR code or one-time password (OTP) for an auditable drop-off and pickup. Partners gain an additional income channel, while administrators oversee verification, activity, and service quality.
+POTLI is a proposed web application for short-term luggage storage at local shops, hotels, and other businesses. It is intended for travelers who need to leave their bags between transport connections, accommodation check-in times, or other activities. The proposed workflow covers finding storage, reserving a time slot, and verifying drop-off and pickup through a QR code or one-time password (OTP). Storage partners would manage capacity and receive payment for completed bookings, while administrators would review partner applications and service records.
 
-This mid-semester report documents the problem, requirements, architecture, data flows, UML models, implementation status, and evaluation plan. The current prototype contains a responsive TypeScript/Vite frontend, an Express API with versioned authentication endpoints, Supabase Auth sessions, and a Drizzle-managed Supabase PostgreSQL schema for public user and partner profiles. Search, booking, handoff, payment, rating, and full administrative operations remain designed work and are explicitly distinguished from implemented functionality. The primary proposed evaluation measure is median Booking Fulfillment Time (BFT), targeted at three minutes or less during a pilot.
+This report presents the requirements, system design, prototype implementation, and proposed evaluation. The prototype uses TypeScript and Vite for the frontend, Express for the API, Appwrite for authentication, and PostgreSQL with Drizzle ORM for application profiles. Account access and profile persistence are implemented; listing search, reservations, luggage handoffs, payments, ratings, and administrative operations remain to be developed. The proposed primary evaluation metric is Booking Fulfillment Time (BFT), with a pilot target of a median time no greater than three minutes.
 
 \tableofcontents
 \listoffigures
@@ -65,14 +72,14 @@ This mid-semester report documents the problem, requirements, architecture, data
 \chapter{Introduction}
 
 \section{Background and Context}
-Travelers often face an awkward interval between transport, accommodation, meetings, and sightseeing. During this period, carrying luggage reduces mobility and can make otherwise useful time inconvenient. Formal locker facilities are generally concentrated at major railway stations and airports; they may be full, geographically unsuitable, or difficult to assess in advance. Simultaneously, local businesses may have safe but underused space without a structured mechanism to offer it.
+Travelers may need temporary luggage storage before hotel check-in, after check-out, or while waiting for a transport connection. Carrying bags during these intervals limits movement and access to other activities. Storage facilities at stations and airports may not be near the traveler's destination, and availability may be difficult to establish in advance. Local businesses offer a possible alternative where suitable storage space is available.
 
-POTLI provides a coordination and trust layer between these groups. Travelers gain discoverable storage, reservation records, and verified handoffs. Storage partners gain tools to publish capacity, working hours, and prices. Platform administrators can review partners, monitor activity, and handle exceptions. The project therefore combines marketplace discovery with a controlled physical handoff workflow rather than acting only as a listing directory.
+POTLI is designed to connect travelers with participating businesses and maintain a record of each storage booking. Partners would publish their capacity, opening hours, and prices. The system would record both luggage handoffs, and administrators would review partner details and disputed bookings. Finding a location is therefore only one part of the proposed service; reservation and handoff records are also required.
 
 \section{Problem Statement}
-The specific problem is the absence of a dependable, easily discoverable, short-duration luggage-storage service near common urban destinations. Informal arrangements lack consistent identity checks, receipts, handoff evidence, availability information, and dispute records. The engineering challenge is to build a deployable web platform that makes the interaction quick for travelers, simple for small businesses, and auditable for administrators.
+The project addresses the difficulty of finding suitable short-duration luggage storage near a traveler's destination. An informal arrangement may not provide a booking receipt, an availability check, or a consistent record of custody. The proposed system must make these records available without imposing a lengthy procedure on either the traveler or the storage partner.
 
-The intended deployment environment creates additional constraints: partner devices may be low-to-mid-range smartphones; users may have intermittent connectivity; onboarding must be comprehensible to non-technical business owners; and the software should rely on mature web infrastructure rather than specialized hardware.
+The interface must be usable on ordinary smartphones and understandable to business owners without technical training. Intermittent connectivity is a further design consideration, particularly during physical handoffs. The project uses standard web technologies and does not require dedicated storage hardware.
 
 \section{Stakeholders}
 \begin{itemize}[leftmargin=*]
@@ -92,17 +99,17 @@ The intended deployment environment creates additional constraints: partner devi
 \end{enumerate}
 
 \section{Scope and Current Status}
-The repository contains both an implemented prototype and design models for later increments. Table~\ref{tab:scope} prevents planned behavior from being mistaken for completed functionality.
+Table~\ref{tab:scope} summarizes the prototype's current scope. The design diagrams also cover features scheduled for later development.
 
 \begin{table}[H]
 \centering
-\begin{tabular}{p{0.34\textwidth}p{0.18\textwidth}p{0.38\textwidth}}
+\begin{tabular}{P{0.34\textwidth}P{0.18\textwidth}P{0.38\textwidth}}
 \toprule
 \textbf{Capability} & \textbf{Status} & \textbf{Evidence} \\
 \midrule
-Responsive landing and role entry pages & \implemented & TypeScript-rendered landing, traveler/admin login, partner sign-up, and dashboard shells \\
-Versioned authentication API & \implemented & \texttt{/api/v1/health}, \texttt{/auth/login}, and \texttt{/auth/me} \\
-Role-based user persistence & \implemented & Supabase \texttt{auth.users}, public \texttt{profiles}, and \texttt{partner\_profiles} \\
+Landing and account-access pages & \implemented & Landing page, role-specific login, partner registration form, and account summary pages \\
+Versioned authentication API & \implemented & \path{/api/v1/health}, \path{/api/v1/auth/login}, and \path{/api/v1/auth/me} \\
+Account and profile persistence & \implemented & Appwrite accounts; PostgreSQL \texttt{profiles} and \texttt{partner\_profiles} \\
 Search and listing availability & \planned & Modeled by DFD process 2.0 and UML interactions \\
 Booking and QR/OTP handoff & \planned & Modeled by DFD processes 3.1--3.5 \\
 Payments, payouts, ratings, and disputes & \planned & Included in approved design and later deliverables \\
@@ -157,14 +164,14 @@ The activity diagram in Figure~\ref{fig:activity} follows the complete workflow 
 \chapter{Methodology and Design}
 
 \section{Development Approach}
-The project follows incremental delivery. The foundation increment establishes the interface, account model, authentication API, and database connectivity. Subsequent increments add listings and search, then booking and handoff state transitions, followed by partner/admin operations, payments, testing, and deployment. This sequence provides early demonstrable value while preserving traceability from requirements to implementation.
+Development is organized into increments. The first establishes the frontend, authentication API, and profile database. The next introduces storage listings and search, followed by reservations and luggage handoffs. Partner and administrator operations, payment processing, testing, and deployment follow these core functions.
 
-The Gantt chart in Figure~\ref{fig:gantt} organizes the work from requirements through launch demonstration. It should be read as the approved development plan rather than a claim that all activities are complete.
+Figure~\ref{fig:gantt} presents the approved development schedule from requirements analysis to the launch demonstration. It records planned activities, not their completion status.
 
 \begin{landscape}
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.94\linewidth,height=0.76\textheight,keepaspectratio]{gantt-chart.png}
+\includegraphics[width=0.96\linewidth,height=0.85\textheight,keepaspectratio]{gantt-chart.png}
 \caption{Project development timeline}
 \label{fig:gantt}
 \end{figure}
@@ -173,12 +180,12 @@ The Gantt chart in Figure~\ref{fig:gantt} organizes the work from requirements t
 \section{High-Level Architecture}
 POTLI uses a three-tier web architecture:
 \begin{enumerate}[leftmargin=*]
-  \item \textbf{Presentation layer:} a responsive TypeScript application bundled with Vite~\cite{vite}. It renders route-specific pages and uses the Supabase JavaScript client to persist and refresh browser sessions.
-  \item \textbf{Application layer:} a TypeScript Express~\cite{express} API. Implemented endpoints are grouped below \texttt{/api/v1}; deprecated unversioned aliases emit deprecation and sunset headers.
-  \item \textbf{Data layer:} Supabase PostgreSQL~\cite{postgresql}, accessed through a shared Drizzle ORM workspace over the \texttt{pg} driver. Supabase Auth owns credentials, while public profile tables hold application roles and partner details.
+  \item \textbf{Presentation layer:} a TypeScript application bundled with Vite~\cite{vite}. It renders the public and account pages and uses Appwrite's Web SDK for authentication.
+  \item \textbf{Application layer:} an Express~\cite{express} API running on Node.js. The current endpoints are grouped under \path{/api/v1} and provide health checks, login, and authenticated profile access.
+  \item \textbf{Data layer:} PostgreSQL~\cite{postgresql}, accessed through a shared Drizzle ORM~\cite{drizzle} workspace and the \texttt{pg} driver. Application roles and partner details are stored here. Appwrite~\cite{appwrite} manages identity and credentials separately.
 \end{enumerate}
 
-The browser signs in through Supabase Auth and receives a managed access/refresh-token session. It sends the access token to the API using the Bearer scheme; the API verifies it through Supabase, then loads the server-controlled role from the public profile. The API also exposes server-side login for non-browser clients. Search, booking, media storage, and payment integrations will extend this baseline.
+The browser signs in to Appwrite and requests a JSON Web Token (JWT)~\cite{jwt} for the current session. It sends this token to the backend using the Bearer scheme. The backend asks Appwrite to identify the account and retrieves the corresponding application profile from PostgreSQL. An account without a profile receives a default traveler profile on its first authenticated profile request. Non-browser clients can use the backend login endpoint. Search, booking, photo storage, and payment services have not yet been added.
 
 \section{Data Flow Diagrams}
 \subsection{Level 0: Context}
@@ -225,16 +232,30 @@ The class model in Figure~\ref{fig:class} connects the common \texttt{User} iden
 \label{fig:class}
 \end{figure}
 
-\section{Behavioral Models}
-\subsection{Sequence Diagram}
-Figure~\ref{fig:sequence} shows the designed end-to-end interaction among traveler, web app, backend, database, payment gateway, and partner. The implemented login exchange appears within a larger planned sequence for discovery, booking, handoff, settlement, and rating.
+\section{Component Model}
+The component diagram in Figure~\ref{fig:component} describes the current implementation rather than the planned business workflow. The browser application uses the backend REST API and Appwrite's Web SDK. The backend depends on configuration, an identity adapter, and the shared database workspace. Appwrite provides account services, while PostgreSQL stores application profiles. Dashed arrows indicate dependencies; circles and semicircles identify provided and required interfaces.
 
+\begin{landscape}
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.78\textwidth,height=0.82\textheight,keepaspectratio]{sequence-diagram.png}
+\includegraphics[width=0.96\linewidth,height=0.85\textheight,keepaspectratio]{component-diagram.png}
+\caption{POTLI implementation component diagram}
+\label{fig:component}
+\end{figure}
+\end{landscape}
+
+\section{Behavioral Models}
+\subsection{Sequence Diagram}
+Figure~\ref{fig:sequence} shows the proposed interaction among the traveler, web application, backend, database, payment gateway, and partner. It covers discovery, authentication, booking, handoff, settlement, and rating. The authentication exchange is a design-level view; the current implementation delegates identity checks to Appwrite.
+
+\clearpage
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.93\textheight,keepaspectratio]{sequence-diagram.png}
 \caption{Booking and handoff sequence diagram}
 \label{fig:sequence}
 \end{figure}
+\clearpage
 
 \subsection{Collaboration Diagram}
 The collaboration diagram (Figure~\ref{fig:collaboration}) presents the booking phase as numbered object-to-object messages rather than a time axis. It emphasizes the links among the web app, booking service, listing store, payment gateway, booking store, and partner.
@@ -261,29 +282,37 @@ The booking state machine in Figure~\ref{fig:state} makes valid transitions expl
 \chapter{Implementation Details}
 
 \section{Frontend Prototype}
-The frontend is a Vite project written in TypeScript and styled with a custom responsive stylesheet. A single rendering entry point maps URL hashes to the landing page, traveler login, admin login, partner account page, or role dashboard. Reusable inline SVG icons, semantic forms, labels, status messages, and navigation links reduce external UI dependencies.
+The frontend is written in TypeScript, bundled with Vite, and styled with a responsive stylesheet. A single rendering entry point selects the page from the URL hash. The available pages cover the landing page, traveler and administrator login, partner account access, password recovery, and account summaries. Shared SVG icons and consistent form labels are used across these pages.
 
-The landing experience communicates the service model, trust controls, partner proposition, and project team. Authentication forms use \texttt{supabase-js}, which persists and refreshes the session, and then call the versioned backend to load the public role profile. The role dashboard changes its copy for traveler, storage partner, or administrator, and each sign-in route rejects credentials for an incompatible role. Search submission and new partner registration are currently interface demonstrations; they do not yet create persistent domain records.
+Login forms use Appwrite's Web SDK to establish a session. The frontend then requests a JWT and calls \path{/api/v1/auth/me} to obtain the user's profile and role. Each login page checks that the returned role matches the selected account type. This controls page navigation; it does not replace server-side authorization for future booking or administrative operations. Search submission and partner registration are not yet connected to persistent records.
+
+Password-recovery and reset forms call Appwrite's recovery endpoints. The reset page reads the account identifier and recovery secret from the emailed link and removes them from the URL after a successful reset. Email delivery requires the Appwrite mail service to be configured.
 
 \section{Backend Authentication API}
 The backend uses TypeScript on Node.js and Express with CORS and JSON middleware. Its main implemented responsibilities are:
 \begin{itemize}[leftmargin=*]
-  \item checking database availability through \texttt{GET /api/v1/health};
-  \item validating email/password credentials through \texttt{POST /api/v1/auth/login};
-  \item delegating credential checks and token issuance to Supabase Auth;
-  \item verifying a bearer token, loading its public profile, and returning the user through \texttt{GET /api/v1/auth/me}; and
-  \item retaining temporary unversioned aliases with explicit deprecation metadata.
+  \item checking PostgreSQL connectivity and Appwrite availability through \path{GET /api/v1/health};
+  \item submitting email/password credentials to Appwrite and returning a JWT through \path{POST /api/v1/auth/login}; and
+  \item identifying the caller through Appwrite, loading or creating the application profile, and returning it through \path{GET /api/v1/auth/me}.
 \end{itemize}
 
-Database access is centralized in the shared Drizzle workspace. Credentials and token signing remain owned by Supabase Auth; the backend uses the publishable key to verify tokens and does not require a service-role secret. Asynchronous route failures reach centralized error handling rather than terminating the process.
+The backend identity adapter calls Appwrite's Account API. For server-side login, it carries the session cookie returned by Appwrite to the JWT endpoint. For authenticated requests, it sends the caller's JWT to Appwrite to obtain the account identity. It does not store passwords or implement token signing locally.
+
+The backend database module provides access to the shared Drizzle workspace. A central error handler receives failures from asynchronous routes. All current API routes are versioned.
 
 \section{Database Schema}
-Supabase Auth owns \texttt{auth.users} and its credential records. A Drizzle-defined public \texttt{profiles} table references each auth UUID and stores email, full name, a constrained \texttt{traveler}/\texttt{storage\_partner}/\texttt{admin} role, and timestamps. The \texttt{partner\_profiles} table extends partner accounts with business name and phone number using a cascading foreign key. A signup trigger creates traveler profiles, while row-level security allows users to read their own profile and administrators to read all profiles.
+The Drizzle schema defines two application tables. The \texttt{profiles} table has a generated UUID primary key, a unique \texttt{appwrite\_user\_id}, email, full name, role, and creation and update timestamps. The role is restricted to \texttt{traveler}, \texttt{storage\_partner}, or \texttt{admin}. The \texttt{partner\_profiles} table stores business name and phone number and references the local profile UUID through a cascading foreign key.
 
-Later migrations will introduce the designed D2--D4 stores: listings and capacity, bookings and handoff records, and payment/settlement records. Transactional constraints will be required so simultaneous requests cannot reserve the same final unit of capacity.
+Appwrite accounts are linked by their string identifiers, not by a foreign key to an authentication table. A profile is created by the backend when an authenticated account first requests profile access. This path assigns the traveler role; users cannot supply a different role through that endpoint. The current migration does not define signup triggers or row-level security policies.
+
+SQL migrations are applied in filename order, with completed versions recorded in a \texttt{migrations} table. The development seed script creates or updates Appwrite accounts through the Users API and writes their roles and partner details to PostgreSQL. Seeding requires a server-side Appwrite API key as well as database access.
+
+Later migrations will add the D2--D4 stores for listings, capacity, bookings, handoffs, and transactions. Availability checks and reservation writes must be performed transactionally to prevent concurrent bookings from consuming the same capacity.
 
 \section{Security and Privacy Considerations}
-The prototype delegates password hashing and signed sessions to Supabase Auth and protects profile access with row-level security, but a deployable service requires additional controls. These include rate limiting, generic authentication errors, refresh/revocation strategy, secure cookie evaluation in place of unrestricted local storage, authorization middleware for every protected role, strict request schemas, TLS, audit logs, and controlled access to handoff photographs. Personally identifiable information and location history should be minimized and retained only for defined operational periods.
+Appwrite manages passwords, sessions, and JWT issuance. The backend identifies a caller before returning the caller's application profile, and it assigns a default role when creating that profile. Database credentials and the administrative API key used for seeding must remain server-side.
+
+Further work is required before public deployment. Protected domain endpoints need server-side role checks, request validation, rate limiting, and audit records. CORS settings must be restricted to the deployed frontend, and error responses must avoid exposing internal database details. Session expiry, revocation, and recovery-link handling also require integration tests. Handoff photographs and personal information will need access controls and defined retention periods. These are requirements for subsequent development, not controls established by the present prototype.
 
 \chapter{Testing and Evaluation}
 
@@ -299,17 +328,17 @@ The planned verification strategy combines:
 \end{itemize}
 
 \section{Current Verification Status}
-At the mid-semester stage, root workspace scripts support full TypeScript checking, a deterministic frontend production build, and an idempotent Supabase migration/seed workflow. The backend does not yet contain an automated test suite, and live API verification depends on a configured PostgreSQL connection. Accordingly, no fabricated accuracy, throughput, uptime, or pilot figures are reported here.
+The repository provides scripts for TypeScript checking, frontend production builds, SQL migrations, and development-account seeding. The checks listed in Table~\ref{tab:verification} are available development tools; the table does not report test results. Live authentication checks require both Appwrite and PostgreSQL, while recovery-email tests also require a configured mail service. An automated backend test suite and the complete booking workflow are not yet available. No pilot performance measurements have been collected.
 
 \begin{table}[H]
 \centering
-\begin{tabular}{p{0.32\textwidth}p{0.22\textwidth}p{0.36\textwidth}}
+\begin{tabular}{P{0.32\textwidth}P{0.22\textwidth}P{0.36\textwidth}}
 \toprule
 \textbf{Check} & \textbf{Status} & \textbf{Interpretation} \\
 \midrule
 TypeScript compilation and Vite production build & Available & Detects type/build failures and produces deployable static assets \\
-Database migration and seed scripts & Available & Creates development roles when a valid database URL is supplied \\
-Automated backend unit/integration suite & Not yet implemented & Required before release readiness can be claimed \\
+Database migration and seed scripts & Available & Applies SQL migrations; seeding also requires Appwrite access and an administrative API key \\
+Automated backend unit/integration suite & Not yet implemented & Needed to verify protected operations and error cases \\
 End-to-end booking workflow & Not yet testable & Booking and handoff modules remain planned \\
 Pilot performance measurements & Not yet collected & Must follow implementation and field trial \\
 \bottomrule
@@ -321,7 +350,7 @@ Pilot performance measurements & Not yet collected & Must follow implementation 
 \section{Evaluation Metrics}
 \begin{table}[H]
 \centering
-\begin{tabular}{p{0.30\textwidth}p{0.20\textwidth}p{0.40\textwidth}}
+\begin{tabular}{P{0.30\textwidth}P{0.20\textwidth}P{0.40\textwidth}}
 \toprule
 \textbf{Metric} & \textbf{Target} & \textbf{Measurement} \\
 \midrule
@@ -343,15 +372,15 @@ A small locality near a railway station or busy market can provide a controlled 
 \chapter{Conclusion}
 
 \section{Summary of Work}
-POTLI defines a practical web platform for connecting travelers who need short-term luggage storage with local businesses that can provide it. The project has progressed from proposal and requirements into a documented architecture, balanced DFDs, UML behavioral and structural models, a responsive frontend prototype, a versioned Express authentication API, and a PostgreSQL role schema.
+The work completed so far includes requirements analysis, the system architecture, data flow and UML models, a responsive frontend, a versioned authentication API, and an application profile schema. The prototype connects Appwrite account access with PostgreSQL profile persistence.
 
-The current implementation proves the foundation rather than the complete service. Its strongest completed elements are role-aware account access, API/database connectivity, a coherent user experience, and detailed traceable system design. Core transactional capabilities---search-backed listings, reservations, QR/OTP handoffs, payment settlement, ratings, and administrative operations---remain future increments.
+The prototype does not yet provide a complete luggage-storage service. Listing search, reservations, QR/OTP handoffs, payments, ratings, and administrative operations remain to be implemented and tested.
 
 \section{Key Findings}
 \begin{itemize}[leftmargin=*]
-  \item Trust must be represented as verifiable workflow data: identity review, explicit state transitions, handoff credentials, timestamps, and photographic evidence.
+  \item A booking record must retain the information needed to verify custody: handoff credentials, timestamps, and photographic evidence.
   \item Availability and booking creation form the central consistency boundary; they must be updated transactionally to prevent overbooking.
-  \item A shared user table with constrained roles simplifies authentication, while separate partner profiles and domain tables preserve extensibility.
+  \item Account identity is managed by Appwrite. PostgreSQL stores application roles and business records.
   \item The BFT target is useful only when timestamps and state definitions are implemented before pilot measurement.
 \end{itemize}
 
@@ -367,7 +396,7 @@ The current implementation proves the foundation rather than the complete servic
 \end{enumerate}
 
 \section{Final Remarks}
-The project is technically feasible with established web components, but its success depends as much on operational clarity and trust as on interface quality. The next milestone should prioritize one complete, tested path from available listing to verified pickup before broadening features. This vertical slice will make the evaluation metrics meaningful and expose the highest-risk integration points early.
+The next milestone is a tested workflow from listing search to verified pickup. It must include a reliable capacity check, a persistent booking record, and both handoff confirmations. Completing this workflow will allow the team to measure BFT and evaluate the service with the proposed pilot participants.
 
 \printbibliography[heading=bibintoc]
 

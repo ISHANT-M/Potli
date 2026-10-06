@@ -79,6 +79,7 @@
 %% ===================================================
 %% Standard packages for links, images, and
 %% mathematical notation support.
+\RequirePackage{float}
 \RequirePackage{hyperref}
 \RequirePackage{graphicx}
 \RequirePackage{amsmath}
