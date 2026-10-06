@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="920" viewBox="0 0 1280 920" role="img" aria-labelledby="title desc">
+  <title id="title">POTLI component diagram</title>
+  <desc id="desc">Physical implementation components with UML component symbols, source-file artifacts, dashed dependencies, and provided and required interfaces. The browser uses the backend API and Appwrite client library. The backend depends on configuration, its Appwrite adapter, and the shared database workspace. Appwrite supplies identity and PostgreSQL supplies application persistence.</desc>
+  <defs>
+    <marker id="dependency" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L10 6 L1 11" fill="none" stroke="#444444" stroke-width="1.8"/></marker>
+    <g id="component-icon" fill="#fff" stroke="#333333" stroke-width="1.5"><rect x="7" y="0" width="20" height="26"/><rect x="0" y="5" width="13" height="6"/><rect x="0" y="16" width="13" height="6"/></g>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #222222; text-anchor: middle; }
+      .heading { font-size: 28px; font-weight: bold; }
+      .name { font-size: 21px; font-weight: bold; }
+      .body { font-size: 17px; }
+      .stereo { font-size: 15px; }
+      .label { font-size: 16px; fill: #333333; }
+      .box { fill: #ffffff; stroke: #333333; stroke-width: 2; }
+      .external { fill: #ffffff; stroke: #444444; stroke-width: 2; }
+      .line { fill: none; stroke: #444444; stroke-width: 2; }
+      .dep { fill: none; stroke: #444444; stroke-width: 2; stroke-dasharray: 7 5; marker-end: url(#dependency); }
+      .provided { fill: white; stroke: #444444; stroke-width: 2; }
+    </style>
+  </defs>
+  <rect width="1280" height="920" fill="white"/>
+  <text x="640" y="43" class="heading">POTLI Component Diagram</text>
+
+  <!-- Components -->
+  <rect x="80" y="110" width="340" height="150" class="box"/>
+  <use href="#component-icon" x="378" y="124"/>
+  <text x="250" y="138" class="stereo">«component»</text>
+  <text x="250" y="169" class="name">Browser application</text>
+  <text x="250" y="200" class="body">code/frontend</text>
+  <text x="250" y="226" class="body">main.ts · styles.css · Vite bundle</text>
+
+  <rect x="760" y="110" width="400" height="150" class="box"/>
+  <use href="#component-icon" x="1118" y="124"/>
+  <text x="960" y="138" class="stereo">«component»</text>
+  <text x="960" y="169" class="name">Backend API</text>
+  <text x="960" y="200" class="body">code/backend/src/server.ts</text>
+  <text x="960" y="226" class="body">Node.js · Express</text>
+
+  <rect x="80" y="430" width="340" height="130" class="box"/>
+  <use href="#component-icon" x="378" y="444"/>
+  <text x="250" y="458" class="stereo">«library»</text>
+  <text x="250" y="489" class="name">Appwrite Web SDK</text>
+  <text x="250" y="519" class="body">frontend/src/appwrite.ts</text>
+  <text x="250" y="543" class="body">appwrite npm package</text>
+
+  <rect x="760" y="430" width="400" height="130" class="box"/>
+  <use href="#component-icon" x="1118" y="444"/>
+  <text x="960" y="458" class="stereo">«component»</text>
+  <text x="960" y="489" class="name">Identity adapter</text>
+  <text x="960" y="519" class="body">backend/src/appwrite.ts</text>
+  <text x="960" y="543" class="body">Sign-in · JWT verification</text>
+
+  <path d="M490 430 H685 L720 465 V560 H490 Z M685 430 V465 H720" fill="#ffffff" stroke="#333333" stroke-width="2"/>
+  <text x="605" y="461" class="stereo">«file»</text>
+  <text x="605" y="496" class="name">config.ts</text>
+  <text x="605" y="524" class="body">backend/src</text>
+  <text x="605" y="546" class="body">Environment settings</text>
+
+  <rect x="80" y="730" width="340" height="150" class="external"/>
+  <use href="#component-icon" x="378" y="744"/>
+  <text x="250" y="758" class="stereo">«external component»</text>
+  <text x="250" y="789" class="name">Appwrite Auth</text>
+  <text x="250" y="820" class="body">Accounts · sessions · JWTs</text>
+  <text x="250" y="847" class="body">Identity and credential store</text>
+
+  <rect x="760" y="730" width="400" height="150" class="box"/>
+  <use href="#component-icon" x="1118" y="744"/>
+  <text x="960" y="758" class="stereo">«component»</text>
+  <text x="960" y="789" class="name">Database workspace</text>
+  <text x="960" y="820" class="body">code/db: client.ts · profiles.ts</text>
+  <text x="960" y="847" class="body">schema.ts · Drizzle ORM · pg</text>
+
+  <rect x="460" y="730" width="230" height="150" class="external"/>
+  <use href="#component-icon" x="648" y="744"/>
+  <text x="575" y="758" class="stereo">«database»</text>
+  <text x="575" y="789" class="name">PostgreSQL</text>
+  <text x="575" y="820" class="body">profiles</text>
+  <text x="575" y="847" class="body">partner_profiles</text>
+
+  <!-- Assembly connectors: socket at the consumer, circle at the provider -->
+  <path d="M420 185 H580 M610 185 H760" class="line"/>
+  <path d="M594 168 A17 17 0 0 0 594 202" class="line"/>
+  <circle cx="599" cy="185" r="11" class="provided"/>
+  <text x="590" y="151" class="label">REST API / HTTPS</text>
+  <text x="590" y="230" class="label">/api/v1/auth · /health</text>
+
+  <path d="M250 560 V645 M250 675 V730" class="line"/>
+  <path d="M233 659 A17 17 0 0 1 267 659" class="line"/>
+  <circle cx="250" cy="664" r="11" class="provided"/>
+  <text x="355" y="671" class="label">Account API</text>
+
+  <path d="M960 560 V635 H125 V730" class="dep"/>
+  <text x="625" y="622" class="label">requires Account API (HTTPS)</text>
+
+  <path d="M690 795 H706 M736 795 H760" class="line"/>
+  <circle cx="717" cy="795" r="11" class="provided"/>
+  <path d="M722 778 A17 17 0 0 1 722 812" class="line"/>
+  <text x="725" y="704" class="label">SQL interface</text>
+
+  <!-- Physical source dependencies -->
+  <path d="M250 260 V430" class="dep"/>
+  <text x="303" y="355" class="label">imports</text>
+  <path d="M960 260 V430" class="dep"/>
+  <text x="1013" y="355" class="label">imports</text>
+  <path d="M830 260 V330 H605 V430" class="dep"/>
+  <text x="709" y="315" class="label">imports</text>
+  <path d="M1160 210 H1220 V800 H1160" class="dep"/>
+  <text x="1200" y="593" class="label" transform="rotate(90 1200 593)">via backend/src/db.ts</text>
+
+</svg>

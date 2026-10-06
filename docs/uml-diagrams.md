@@ -1,4 +1,4 @@
-# POTLI UML Diagrams (Sequence, Class, Collaboration)
+# POTLI UML Diagrams (Sequence, Class, Collaboration, Component)
 
 This document explains the behavioural and structural UML diagrams that
 complement the [use-case diagram](../assets/use-case-diagram.svg), the
@@ -6,6 +6,8 @@ complement the [use-case diagram](../assets/use-case-diagram.svg), the
 [data flow diagrams](data-flow-diagrams.md). Together they model the
 **designed system** described in the project `README.md` and
 `project-proposal/main.tex`.
+
+The [component diagram](#component-diagram) describes the current physical implementation separately from the designed workflows below.
 
 ## Implemented vs planned
 
@@ -112,3 +114,24 @@ Booking Fulfillment Time (BFT), the proposal's primary evaluation metric, is
 measured from search start to entry into `Booked`.
 -->
 
+
+## Component diagram
+
+Follows **UML Diagrams III**, slides 14-17: physical code components, libraries, files and database dependencies rather than logical business processes or deployment hardware.
+
+- Rectangles with the UML component icon identify components; the folded-corner symbol identifies a file.
+- Dashed, open-arrow dependencies point from a consumer to what it uses.
+- Circles represent provided interfaces; semicircles represent required interfaces. Joined symbols show assembly connections.
+
+| Component | Implementation |
+| --- | --- |
+| Browser application | `code/frontend`, built by Vite from `src/main.ts` and `src/styles.css`; requires the backend REST API and imports the Appwrite Web SDK |
+| Backend API | `code/backend/src/server.ts`, using Node.js and Express; provides `/api/v1` endpoints and depends on configuration, identity and database access |
+| Appwrite Web SDK | `appwrite` library wrapped by `code/frontend/src/appwrite.ts`; requires Appwrite's Account API for sessions and JWTs |
+| Identity adapter | `code/backend/src/appwrite.ts`; uses Appwrite's Account API for sign-in and JWT verification |
+| Configuration file | `code/backend/src/config.ts`; supplies environment settings |
+| Database workspace | `code/db/client.ts`, `profiles.ts` and `schema.ts`, using Drizzle ORM and `pg`; consumed through `code/backend/src/db.ts` |
+| Appwrite Auth | External identity component providing accounts, sessions, JWTs and credential storage |
+| PostgreSQL | Application database with `profiles` and `partner_profiles`; credentials remain in Appwrite |
+
+This diagram reflects the current working-tree implementation, including Appwrite. Planned booking, handoff and payment modules are not represented as implemented components. `assets/component-diagram.mmd` is the corresponding Mermaid source, with the same components, dependencies and named interfaces. Mermaid represents interfaces as circles with labeled requires/provides links; `assets/component-diagram.svg` retains the lecture's native UML component icons and socket notation. `assets/component-diagram.drawio` provides editable components, connectors and interface symbols in draw.io. `assets/component-diagram.png` is the SVG's rendered export.

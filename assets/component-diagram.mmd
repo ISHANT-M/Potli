@@ -1,0 +1,26 @@
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#ffffff", "primaryTextColor": "#222222", "primaryBorderColor": "#333333", "lineColor": "#444444", "fontFamily": "Arial"}, "flowchart": {"curve": "linear", "nodeSpacing": 50, "rankSpacing": 65}}}%%
+flowchart TB
+    WEB["«component»<br/>Browser application<br/>code/frontend<br/>main.ts · styles.css · Vite bundle"]
+    API["«component»<br/>Backend API<br/>code/backend/src/server.ts<br/>Node.js · Express"]
+    SDK["«library»<br/>Appwrite Web SDK<br/>frontend/src/appwrite.ts<br/>appwrite npm package"]
+    CONFIG["«file»<br/>config.ts<br/>backend/src<br/>Environment settings"]
+    AUTH["«component»<br/>Identity adapter<br/>backend/src/appwrite.ts<br/>Sign-in · JWT verification"]
+    IDP["«external component»<br/>Appwrite Auth<br/>Accounts · sessions · JWTs<br/>Identity and credential store"]
+    DB["«database»<br/>PostgreSQL<br/>profiles<br/>partner_profiles"]
+    DATA["«component»<br/>Database workspace<br/>code/db: client.ts · profiles.ts<br/>schema.ts · Drizzle ORM · pg"]
+
+    REST(("REST API<br/>HTTPS"))
+    ACCOUNT(("Account API"))
+    SQL(("SQL interface"))
+
+    WEB ---|requires| REST
+    API ---|provides /api/v1/auth · /health| REST
+    WEB -. imports .-> SDK
+    API -. imports .-> CONFIG
+    API -. imports .-> AUTH
+    API -. via backend/src/db.ts .-> DATA
+    SDK ---|requires| ACCOUNT
+    IDP ---|provides| ACCOUNT
+    AUTH -. requires Account API / HTTPS .-> IDP
+    DATA ---|requires| SQL
+    DB ---|provides| SQL
