@@ -144,7 +144,20 @@ Supporting measures include:
 
 ## Project status
 
-POTLI is currently in the **planning and design phase**. The proposal, initial system scope, use cases, and development schedule are available in this repository. Implementation will proceed in iterative milestones, beginning with discovery, booking, role-based access, and QR/OTP handoffs.
+POTLI is under active development. The proposal, system scope, use cases, and development schedule are in this repository, and the application lives in [`code/`](code/README.md).
+
+**Implemented**
+
+- storage search with map and price quotes;
+- booking with Cash on pickup;
+- QR/OTP drop-off and pickup handoffs with photos;
+- partner portal (listings, bookings, earnings);
+- admin portal (partners, bookings, users, disputes, audit); and
+- a 15% platform commission ledger with partner settlements.
+
+**Coming soon**
+
+- UPI and card payments.
 
 ## Documentation
 

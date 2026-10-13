@@ -33,3 +33,7 @@ Thumbs.db
 *.tmp
 *.temp
 .cache/
+
+# Playwright output
+test-results/
+playwright-report/

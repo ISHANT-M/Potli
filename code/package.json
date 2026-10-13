@@ -14,9 +14,11 @@
     "test:db:down": "docker compose -f docker-compose.test.yml down -v",
     "test": "npm run test:api && npm run test:web",
     "test:api": "npm --prefix backend test",
-    "test:web": "npm --prefix frontend test"
+    "test:web": "npm --prefix frontend test",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3"
   }

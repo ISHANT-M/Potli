@@ -61,8 +61,8 @@ reply is sent, per standard sequence-diagram notation.
 ## Class diagram — domain model (`assets/class-diagram.*`)
 
 Models the core objects behind the data stores D1–D4 and the capabilities
-table in the README. `User` is an abstract base (matching Supabase Auth's `auth.users`
-plus the `role` enum on `public.profiles`) specialised by
+table in the README. `User` is an abstract base (matching Appwrite's users
+plus the `role` enum on `profiles`) specialised by
 `Traveler`, `StoragePartner`, and `Administrator`. Key relationships:
 
 | Relationship | Meaning |
