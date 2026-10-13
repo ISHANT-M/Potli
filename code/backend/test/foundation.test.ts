@@ -157,10 +157,10 @@ describe('system', () => {
     expect(res.body.error.code).toBe('NOT_FOUND');
   });
 
-  it('mounts the three portal routers without routes', async () => {
+  it('mounts the three portal routers', async () => {
     const { anon } = makeApp();
-    // Partner and admin routers now exist and require sign-in; the customer one is still empty.
-    expect((await anon().get('/api/v1/listings')).status).toBe(404);
+    // Public search is open; partner and admin areas require sign-in.
+    expect((await anon().get('/api/v1/listings')).status).toBe(200);
     for (const path of ['/api/v1/partner/me', '/api/v1/admin/overview']) {
       expect((await anon().get(path)).status).toBe(401);
     }
