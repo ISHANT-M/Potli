@@ -1,19 +1,14 @@
-/** The API's shared database pool and profile queries. */
-import { createDbWithToken, type Database } from '../../db/client.ts';
-import { ensureProfile as ensureProfileRow, loadProfile as loadProfileFrom } from '../../db/profiles.ts';
-import type { Profile, ProfileInput } from '../../db/profiles.ts';
-import { DATABASE_URL } from './config.ts';
+/** Database factory; nothing connects at import time so the app can be built with an injected database. */
+import { createDbWithToken, type DbPool, type Database } from '../../db/client.ts';
 
-const connection = await createDbWithToken(DATABASE_URL);
-
-export const { pool } = connection;
-export const db: Database = connection.db;
-
-export const query = (text: string, params?: unknown[]) => pool.query(text, params);
-
+export type { Database, DbPool };
 export { describeDbError, isDatabaseError } from '../../db/errors.ts';
 
-export const loadProfile = (appwriteUserId: string): Promise<Profile | null> =>
-  loadProfileFrom(db, appwriteUserId);
+export interface DatabaseHandle {
+  db: Database;
+  pool: DbPool;
+}
 
-export const ensureProfile = (input: ProfileInput): Promise<Profile> => ensureProfileRow(db, input);
+export async function createDatabase(databaseUrl: string): Promise<DatabaseHandle> {
+  return createDbWithToken(databaseUrl);
+}

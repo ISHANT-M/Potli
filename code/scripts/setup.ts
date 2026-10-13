@@ -4,7 +4,7 @@ import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DB_URL_KEYS, inspectConnectionEnv, type ConnectionState } from './lib/env.ts';
+import { DB_URL_KEYS, inspectConnectionEnv, isPlaceholderValue, readEnvValue, type ConnectionState } from './lib/env.ts';
 
 const CODE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const IS_WIN = process.platform === 'win32';
@@ -185,7 +185,9 @@ async function runDatabase(opts: Options): Promise<boolean> {
 
   const value = info.value ?? '';
   const key = info.key ?? DB_URL_KEYS[0] ?? 'DATABASE_URL';
-  for (const script of ['migrate', 'seed']) {
+  const hasApiKey = !isPlaceholderValue(readEnvValue(backendDir, 'APPWRITE_API_KEY'));
+  if (!hasApiKey) console.log(`${yellow('warn')}  APPWRITE_API_KEY is not set; skipping the Storage bucket bootstrap.`);
+  for (const script of hasApiKey ? ['migrate', 'seed', 'bootstrap:appwrite'] : ['migrate', 'seed']) {
     const result = runNpm(['run', script], dbDir);
     if (result.status !== 0) {
       const scheme = /^postgres(ql)?:\/\//.test(value)
@@ -195,7 +197,7 @@ async function runDatabase(opts: Options): Promise<boolean> {
       return false;
     }
   }
-  record('db', 'ok', `migrations applied and dev accounts seeded (${where})`);
+  record('db', 'ok', `migrations applied, dev accounts seeded and storage buckets ensured (${where})`);
   return true;
 }
 

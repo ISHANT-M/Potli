@@ -8,7 +8,8 @@
     "generate": "drizzle-kit generate",
     "migrate": "node scripts/migrate.ts",
     "seed": "node scripts/seed.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bootstrap:appwrite": "node scripts/appwrite-bootstrap.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

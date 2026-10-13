@@ -1,25 +1,28 @@
-/** Appwrite session creation and JWT verification for API clients. */
-import { APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID, requireEnv } from './config.ts';
-import type { Profile } from '../../db/profiles.ts';
+/** Appwrite access for the API: JWT lookups, server-side sign-in, labels, user status and file storage. */
 import type { Role } from '../../db/schema.ts';
-
-requireEnv([
-  ['APPWRITE_ENDPOINT', APPWRITE_ENDPOINT],
-  ['APPWRITE_PROJECT_ID', APPWRITE_PROJECT_ID],
-]);
-
-export interface PublicUser {
-  id: string | null;
-  email: string;
-  full_name: string;
-  role: Role;
-}
+import type { Config } from './config.ts';
 
 export interface AppwriteAccount {
   $id: string;
   email: string;
   name: string;
   labels?: string[];
+  emailVerification?: boolean;
+}
+
+export type SignInResult = { jwt: string } | { error: string; status: number };
+
+export interface AppwriteAdapter {
+  /** Resolve the account a JWT belongs to, or null when it is invalid or expired. */
+  accountFromJwt(jwt: string | null): Promise<AppwriteAccount | null>;
+  /** Server-side sign-in for API clients; the browser uses the Web SDK. */
+  signInWithPassword(email: string, password: string): Promise<SignInResult>;
+  authReachable(): Promise<boolean>;
+  setLabels(userId: string, labels: string[]): Promise<void>;
+  setUserStatus(userId: string, enabled: boolean): Promise<void>;
+  /** Store a file in a private bucket and return its file id. */
+  uploadFile(bucket: string, buffer: Buffer, filename: string, mime: string): Promise<string>;
+  downloadFile(bucket: string, fileId: string): Promise<{ buffer: Buffer; mime: string } | null>;
 }
 
 // Appwrite labels are alphanumeric; the database enum uses snake_case.
@@ -29,86 +32,14 @@ const ROLE_BY_LABEL: Record<string, Role> = {
   admin: 'admin',
 };
 
-function headers(extra: Record<string, string> = {}): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    'X-Appwrite-Project': APPWRITE_PROJECT_ID,
-    ...extra,
-  };
-}
+export const LABEL_BY_ROLE: Record<Role, string> = {
+  traveler: 'traveler',
+  storage_partner: 'storagePartner',
+  admin: 'admin',
+};
 
-async function readJson<T>(response: Response): Promise<T> {
-  const text = await response.text();
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error(`Appwrite returned non-JSON (${response.status}): ${text.slice(0, 200)}`);
-  }
-}
-
-export async function accountFromJwt(jwt: string | null): Promise<AppwriteAccount | null> {
-  if (!jwt) return null;
-  try {
-    const response = await fetch(`${APPWRITE_ENDPOINT}/account`, {
-      headers: headers({ 'X-Appwrite-JWT': jwt }),
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!response.ok) return null;
-    return await readJson<AppwriteAccount>(response);
-  } catch {
-    return null;
-  }
-}
-
-/** Appwrite 2.x requires the session's Set-Cookie value to mint a JWT. */
-export async function signInWithPassword(
-  email: string,
-  password: string,
-): Promise<{ jwt: string } | { error: string }> {
-  const session = await fetch(`${APPWRITE_ENDPOINT}/account/sessions/email`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify({ email, password }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  const sessionBody = await readJson<{ message?: string }>(session);
-  if (!session.ok) {
-    return { error: sessionBody.message ?? 'Invalid email or password.' };
-  }
-
-  const sessionCookie = session.headers
-    .getSetCookie()
-    .map((cookie) => cookie.split(';')[0] ?? '')
-    .find((cookie) => cookie.startsWith('a_session_'));
-  if (!sessionCookie) {
-    return { error: 'Appwrite did not return a session cookie.' };
-  }
-
-  const jwt = await fetch(`${APPWRITE_ENDPOINT}/account/jwts`, {
-    method: 'POST',
-    headers: headers({ Cookie: sessionCookie }),
-    body: '{}',
-    signal: AbortSignal.timeout(10_000),
-  });
-  const jwtBody = await readJson<{ jwt?: string; message?: string }>(jwt);
-  if (!jwt.ok || !jwtBody.jwt) {
-    return { error: jwtBody.message ?? 'Could not create a token for that session.' };
-  }
-  return { jwt: jwtBody.jwt };
-}
-
-/** /health/version is public; /health requires a scoped API key. */
-export async function authReachable(): Promise<boolean> {
-  try {
-    const response = await fetch(`${APPWRITE_ENDPOINT}/health/version`, {
-      headers: { 'X-Appwrite-Project': APPWRITE_PROJECT_ID },
-      signal: AbortSignal.timeout(8_000),
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
+/** The infrastructure account is never a Potli user (code/ARCHITECTURE.md). */
+export const INFRA_LABEL = 'infra';
 
 export function roleFromLabels(labels: string[] = []): Role {
   for (const label of labels) {
@@ -118,11 +49,127 @@ export function roleFromLabels(labels: string[] = []): Role {
   return 'traveler';
 }
 
-export function toPublicUser(profile: Profile | null, account: AppwriteAccount | null): PublicUser {
+async function readJson<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`Appwrite returned non-JSON (${response.status})`);
+  }
+}
+
+export function createAppwriteAdapter(
+  config: Pick<Config, 'appwriteEndpoint' | 'appwriteProjectId' | 'appwriteApiKey'>,
+): AppwriteAdapter {
+  const endpoint = config.appwriteEndpoint;
+
+  const baseHeaders = (extra: Record<string, string> = {}): Record<string, string> => ({
+    'X-Appwrite-Project': config.appwriteProjectId,
+    ...extra,
+  });
+  const jsonHeaders = (extra: Record<string, string> = {}) => baseHeaders({ 'Content-Type': 'application/json', ...extra });
+  const keyHeaders = (extra: Record<string, string> = {}) => baseHeaders({ 'X-Appwrite-Key': config.appwriteApiKey, ...extra });
+
+  async function serverCall(method: string, path: string, body?: unknown): Promise<Response> {
+    return fetch(`${endpoint}${path}`, {
+      method,
+      headers: body === undefined ? keyHeaders() : keyHeaders({ 'Content-Type': 'application/json' }),
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
+    });
+  }
+
   return {
-    id: profile?.id ?? null,
-    email: profile?.email ?? account?.email ?? '',
-    full_name: profile?.fullName || account?.name || '',
-    role: profile?.role ?? roleFromLabels(account?.labels),
+    async accountFromJwt(jwt) {
+      if (!jwt) return null;
+      try {
+        const response = await fetch(`${endpoint}/account`, {
+          headers: jsonHeaders({ 'X-Appwrite-JWT': jwt }),
+          signal: AbortSignal.timeout(8_000),
+        });
+        if (!response.ok) return null;
+        return await readJson<AppwriteAccount>(response);
+      } catch {
+        return null;
+      }
+    },
+
+    /** Appwrite 2.x returns the session secret only in Set-Cookie, so carry it into the JWT request. */
+    async signInWithPassword(email, password) {
+      const session = await fetch(`${endpoint}/account/sessions/email`, {
+        method: 'POST',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ email, password }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!session.ok) return { error: 'Sign-in was refused.', status: session.status };
+
+      const sessionCookie = session.headers
+        .getSetCookie()
+        .map((cookie) => cookie.split(';')[0] ?? '')
+        .find((cookie) => cookie.startsWith('a_session_'));
+      if (!sessionCookie) return { error: 'No session was returned.', status: 502 };
+
+      const response = await fetch(`${endpoint}/account/jwts`, {
+        method: 'POST',
+        headers: jsonHeaders({ Cookie: sessionCookie }),
+        body: '{}',
+        signal: AbortSignal.timeout(10_000),
+      });
+      const body = await readJson<{ jwt?: string }>(response);
+      if (!response.ok || !body.jwt) return { error: 'Could not create a token.', status: 502 };
+      return { jwt: body.jwt };
+    },
+
+    /** /health/version is public; /health requires a scoped API key. */
+    async authReachable() {
+      try {
+        const response = await fetch(`${endpoint}/health/version`, {
+          headers: baseHeaders(),
+          signal: AbortSignal.timeout(8_000),
+        });
+        return response.ok;
+      } catch {
+        return false;
+      }
+    },
+
+    async setLabels(userId, labels) {
+      const response = await serverCall('PUT', `/users/${encodeURIComponent(userId)}/labels`, { labels });
+      if (!response.ok) throw new Error(`Appwrite could not update labels (${response.status})`);
+    },
+
+    async setUserStatus(userId, enabled) {
+      const response = await serverCall('PATCH', `/users/${encodeURIComponent(userId)}/status`, { status: enabled });
+      if (!response.ok) throw new Error(`Appwrite could not update the user status (${response.status})`);
+    },
+
+    async uploadFile(bucket, buffer, filename, mime) {
+      const form = new FormData();
+      form.append('fileId', 'unique()');
+      form.append('file', new Blob([new Uint8Array(buffer)], { type: mime }), filename);
+      const response = await fetch(`${endpoint}/storage/buckets/${encodeURIComponent(bucket)}/files`, {
+        method: 'POST',
+        headers: keyHeaders(),
+        body: form,
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!response.ok) throw new Error(`Appwrite storage upload failed (${response.status})`);
+      const body = await readJson<{ $id: string }>(response);
+      return body.$id;
+    },
+
+    async downloadFile(bucket, fileId) {
+      const response = await fetch(
+        `${endpoint}/storage/buckets/${encodeURIComponent(bucket)}/files/${encodeURIComponent(fileId)}/download`,
+        { headers: keyHeaders(), signal: AbortSignal.timeout(30_000) },
+      );
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(`Appwrite storage download failed (${response.status})`);
+      return {
+        buffer: Buffer.from(await response.arrayBuffer()),
+        mime: response.headers.get('content-type') ?? 'application/octet-stream',
+      };
+    },
   };
 }

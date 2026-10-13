@@ -48,6 +48,10 @@ For later schema changes, edit `db/schema.ts`, then run `cd db && npm run genera
 
 ## Where to look
 
+- `backend/src/app.ts`, `http/`, `lib/`, `routes/`: middleware, auth guards, handoff codes and routers (portal routers are mounted but empty until their agents fill them).
+- `shared/`: DTO types, booking state machine, pricing and validation shared by API and frontend.
+- `db/bookings.ts`: capacity-safe booking creation and transitions.
+- `frontend/src/lib/` and `routes.ts`: html escaping, router, API client; portal placeholders live in `portals/`.
 - `frontend/src/main.ts`, `frontend/src/appwrite.ts`: browser login, role routing and recovery.
 - `backend/src/server.ts`, `backend/src/appwrite.ts`, `backend/src/db.ts`: HTTP routes, Appwrite validation and profile access.
 - `db/schema.ts`, `db/client.ts`, `db/profiles.ts`, `db/scripts/`: schema, connection transport, migrations and seed.

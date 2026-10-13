@@ -1,5 +1,13 @@
 import './styles.css';
-import { account, appwriteConfigured, clearRecoveryLink, recoveryLink } from './appwrite';
+import './styles/tokens.css';
+import './styles/portal.css';
+import type { Me } from '../../shared/types';
+import { account, appwriteConfigured, clearRecoveryLink, recoveryLink, verifyLink } from './appwrite';
+import { escapeHtml, mount } from './lib/html';
+import { focusHeading, leaveRoute, mountRoute, parseHash, sanitizeNext } from './lib/router';
+import { getMe, homeFor, resetApiToken, setMe, signOut } from './lib/session';
+import { forbiddenPage, notFoundPage } from './pages/status';
+import { routes } from './routes';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 const API_V1 = `${API_BASE}/api/v1`;
@@ -10,6 +18,7 @@ interface SessionUser {
   full_name: string;
   role: Role;
 }
+
 
 type Role = 'traveler' | 'storage_partner' | 'admin';
 
@@ -32,7 +41,6 @@ const ROLE_NOUN: Record<Role, string> = {
   admin: 'Admin',
 };
 
-let currentUser: CurrentUser | null = null;
 
 // Route-scoped notices survive unrelated renders.
 let authNotice: { route: string; text: string } | null = null;
@@ -58,8 +66,14 @@ async function loadProfile(): Promise<CurrentUser | null> {
   const res = await fetch(`${API_V1}/auth/me`, {
     headers: { Authorization: `Bearer ${jwt}` },
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const failure = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
+    if (failure?.error?.code === 'ACCOUNT_DISABLED') throw new Error(failure.error.message ?? 'This account has been disabled.');
+    setMe(null);
+    return null;
+  }
   const body = (await res.json()) as { user?: SessionUser };
+  setMe((body.user as unknown as Me | undefined) ?? null);
   return body.user ?? null;
 }
 
@@ -88,10 +102,11 @@ const team = [
 ];
 
 function header(): string {
-  const accountLink = currentUser
-    ? `<a class="login-link" href="#dashboard">${currentUser.full_name}</a><a class="button button-small" href="#dashboard">Dashboard</a>`
+  const me = getMe();
+  const accountLink = me
+    ? `<a class="login-link" href="${homeFor(me)}">${escapeHtml(me.fullName.split(' ')[0] || 'Account')}</a><a class="button button-small" href="${homeFor(me)}">Go to dashboard</a>`
     : `<a class="earn-link" href="#partners">Earn with Potli</a>
-      <a class="login-link" href="#login">Log in</a>
+      <a class="login-link" href="#/login">Log in</a>
       <a class="button button-small" href="#search">Find storage</a>`;
   return `<header class="site-header">
     <a class="brand" href="#home" aria-label="Potli home">
@@ -160,13 +175,14 @@ function loginPage(kind: Role = 'traveler'): string {
   const isAdmin = kind === 'admin';
   return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><a href="#home">Back to home</a></header>
   <main class="login-page"><section class="login-intro"><p class="eyebrow">${isAdmin ? 'Potli administration' : 'Welcome back'}</p><h1>${isAdmin ? 'Keep Potli running smoothly.' : 'Your plans are waiting.'}</h1><p>${isAdmin ? 'Secure access for authorised Potli administrators.' : 'Log in to view bookings, manage a storage location, or pick up where you left off.'}</p><div class="login-quote"><span class="quote-mark quote-open">${icon('quote')}</span><p>Travel is better when the bags aren't deciding the itinerary.</p><span class="quote-mark quote-close">${icon('quote')}</span></div></section>
-  <section class="login-panel"><div class="login-card"><h2>${isAdmin ? 'Admin login' : 'Log in to Potli'}</h2><p>${isAdmin ? 'Enter your administrator credentials.' : 'Enter your details to continue.'}</p><form id="login-form" data-expected-role="${kind}"><label>Email address<input type="email" name="email" placeholder="${isAdmin ? 'admin@potli.com' : 'you@example.com'}" autocomplete="email" required /></label><label>Password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="current-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label><div class="form-row"><label class="checkbox"><input type="checkbox" /> Remember me</label><a href="#forgot-password">Forgot password?</a></div><button class="button login-submit" type="submit">${isAdmin ? 'Continue securely' : 'Log in'} ${icon('arrow')}</button>${noticeField(isAdmin ? '#admin-login' : '#login')}</form>${isAdmin ? '<p class="admin-access-link"><a href="#login">Return to traveller login</a></p>' : '<p class="signup-note">New to Potli? <span>Traveller sign-up is coming soon.</span></p><p class="admin-access-link">Potli team member? <a href="#admin-login">Admin login</a></p>'}</div></section></main>`;
+  <section class="login-panel"><div class="login-card"><h2>${isAdmin ? 'Admin login' : 'Log in to Potli'}</h2><p>${isAdmin ? 'Enter your administrator credentials.' : 'Enter your details to continue.'}</p><form id="login-form" data-expected-role="${kind}"><label>Email address<input type="email" name="email" placeholder="${isAdmin ? 'admin@potli.com' : 'you@example.com'}" autocomplete="email" required /></label><label>Password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="current-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label><div class="form-row form-row-end"><a href="#forgot-password?role=${kind}">Forgot password?</a></div><button class="button login-submit" type="submit">${isAdmin ? 'Continue securely' : 'Log in'} ${icon('arrow')}</button>${noticeField(isAdmin ? '#admin-login' : '#login')}</form>${isAdmin ? '<p class="admin-access-link"><a href="#login">Return to traveller login</a></p>' : '<p class="signup-note">New to Potli? <a href="#/register">Create an account</a></p><p class="admin-access-link">Potli team member? <a href="#admin-login">Admin login</a></p>'}</div></section></main>`;
 }
 
-function forgotPasswordPage(): string {
-  return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><a href="#login">Back to login</a></header>
+function forgotPasswordPage(role: Role): string {
+  const loginHash = role === 'admin' ? '#admin-login' : role === 'storage_partner' ? '#partner-signup' : '#login';
+  return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><a href="${loginHash}">Back to login</a></header>
   <main class="login-page"><section class="login-intro"><p class="eyebrow">Account recovery</p><h1>Forgot your password?</h1><p>Give us the email on your Potli account and we will send a secure link to choose a new password.</p><div class="login-quote"><span class="quote-mark quote-open">${icon('quote')}</span><p>The bags are safe. Your password can be too.</p><span class="quote-mark quote-close">${icon('quote')}</span></div></section>
-  <section class="login-panel"><div class="login-card"><h2>Reset password</h2><p>We will email you a link that expires shortly.</p><form id="forgot-form"><label>Email address<input type="email" name="email" placeholder="you@example.com" autocomplete="email" required /></label><button class="button login-submit" type="submit">Send reset link ${icon('arrow')}</button>${noticeField('#forgot-password')}</form><p class="admin-access-link"><a href="#login">Return to traveller login</a></p></div></section></main>`;
+  <section class="login-panel"><div class="login-card"><h2>Reset password</h2><p>We will email you a link that expires shortly.</p><form id="forgot-form"><label>Email address<input type="email" name="email" placeholder="you@example.com" autocomplete="email" required /></label><button class="button login-submit" type="submit">Send reset link ${icon('arrow')}</button>${noticeField('#forgot-password')}</form><p class="admin-access-link"><a href="${loginHash}">Return to login</a></p></div></section></main>`;
 }
 
 function resetPasswordPage(): string {
@@ -212,27 +228,6 @@ function partnerPage(): string {
   </main>`;
 }
 
-function dashboardPage(user: CurrentUser): string {
-  const roleCopy: Record<CurrentUser['role'], { eyebrow: string; text: string }> = {
-    traveler: {
-      eyebrow: 'Traveller dashboard',
-      text: 'Search nearby storage, track bookings, and check in with QR or OTP.',
-    },
-    storage_partner: {
-      eyebrow: 'Partner dashboard',
-      text: 'Manage availability, confirm drop-offs and pickups, and track earnings.',
-    },
-    admin: {
-      eyebrow: 'Admin dashboard',
-      text: 'Verify partners, monitor bookings, and handle disputes.',
-    },
-  };
-  const copy = roleCopy[user.role];
-  return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><button class="button button-small" id="logout-button" type="button">Log out</button></header>
-  <main class="login-page"><section class="login-intro"><p class="eyebrow">${copy.eyebrow}</p><h1>Namaste, ${user.full_name}.</h1><p>${copy.text}</p></section>
-  <section class="login-panel"><div class="login-card"><h2>Role: ${user.role}</h2><p>${user.email}</p></div></section></main>`;
-}
-
 function footer(): string {
   return `<footer><a class="brand brand-light" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><p>Travel light. Explore freely.</p><div><a href="#safety">Safety</a><a href="#partners">Partners</a><a href="#team">Team</a></div><small>© ${new Date().getFullYear()} Potli. Student project.</small></footer>`;
 }
@@ -240,7 +235,19 @@ function footer(): string {
 function wireInteractions(): void {
   document.querySelector<HTMLFormElement>('.search-box')?.addEventListener('submit', (event) => {
     event.preventDefault();
-    document.querySelector<HTMLInputElement>('.search-box input')?.focus();
+    const input = document.querySelector<HTMLInputElement>('.search-box input');
+    const query = input?.value.trim() ?? '';
+    if (!query) {
+      input?.focus();
+      return;
+    }
+    // Start of the booking-flow-time (BFT) measurement.
+    try {
+      sessionStorage.setItem('potli.searchStartedAt', new Date().toISOString());
+    } catch {
+      /* storage can be blocked; the measurement is optional */
+    }
+    window.location.hash = `#/search?q=${encodeURIComponent(query)}`;
   });
   const password = document.querySelector<HTMLInputElement>('input[name="password"]');
   document.querySelector<HTMLButtonElement>('.show-password')?.addEventListener('click', (event) => {
@@ -253,16 +260,6 @@ function wireInteractions(): void {
   document.querySelector<HTMLFormElement>('#forgot-form')?.addEventListener('submit', handleForgotPassword);
   document.querySelector<HTMLFormElement>('#reset-form')?.addEventListener('submit', handleResetPassword);
   document.querySelector<HTMLFormElement>('#partner-form')?.addEventListener('submit', handlePartnerAuth);
-  document.querySelector<HTMLButtonElement>('#logout-button')?.addEventListener('click', () => {
-    void account
-      .deleteSession({ sessionId: 'current' })
-      .catch(() => undefined) // an expired session is still a sign-out
-      .then(() => {
-        currentUser = null;
-        window.location.hash = '#home';
-      });
-  });
-
   document.querySelectorAll<HTMLButtonElement>('.auth-tab').forEach((tab) => tab.addEventListener('click', () => {
     const isLogin = tab.dataset.authView === 'login';
     document.querySelectorAll<HTMLButtonElement>('.auth-tab').forEach((item) => {
@@ -286,6 +283,14 @@ function wireInteractions(): void {
   }));
 }
 
+function loginErrorMessage(err: unknown): string {
+  const code = (err as { code?: number } | null)?.code;
+  if (code === 429) return 'Too many attempts. Please wait a few minutes and try again.';
+  if (code === 401 || code === 400) return 'Email or password is incorrect.';
+  if (err instanceof TypeError || code === 0) return 'Could not reach Potli. Check your connection and try again.';
+  return err instanceof Error && err.message ? err.message : 'Login failed. Please try again.';
+}
+
 async function handleLogin(event: SubmitEvent): Promise<void> {
   event.preventDefault();
   const form = event.currentTarget as HTMLFormElement;
@@ -303,16 +308,16 @@ async function handleLogin(event: SubmitEvent): Promise<void> {
       email: String(data.get('email') ?? ''),
       password: String(data.get('password') ?? ''),
     });
+    resetApiToken();
 
     const user = await loadProfile();
     if (!user) {
       await account.deleteSession({ sessionId: 'current' }).catch(() => undefined);
-      throw new Error('Signed in, but no Potli profile was found for this account.');
+      throw new Error('Signed in, but we could not load your Potli account. Please try again.');
     }
 
     if (user.role !== expected) {
       await account.deleteSession({ sessionId: 'current' }).catch(() => undefined);
-      currentUser = null;
       const ownHash =
         expected === 'admin' ? '#admin-login' : expected === 'storage_partner' ? '#partner-signup' : '#login';
       authNotice = {
@@ -324,10 +329,14 @@ async function handleLogin(event: SubmitEvent): Promise<void> {
       return;
     }
 
-    currentUser = user;
-    window.location.hash = '#dashboard';
+    const me = getMe();
+    const next = sanitizeNext(parseHash(window.location.hash).query.get('next'));
+    window.location.hash =
+      me && !me.emailVerified && me.role !== 'admin' ? '#/verify-email' : (next ?? (me ? homeFor(me) : '#/'));
   } catch (err) {
-    if (message) message.textContent = err instanceof Error ? err.message : 'Login failed.';
+    await account.deleteSession({ sessionId: 'current' }).catch(() => undefined);
+    setMe(null);
+    if (message) message.textContent = loginErrorMessage(err);
   } finally {
     if (submit) submit.disabled = false;
   }
@@ -350,8 +359,12 @@ async function handleForgotPassword(event: SubmitEvent): Promise<void> {
     // Avoid revealing whether the address has an account.
     if (message) message.textContent = 'If that email has a Potli account, a reset link is on its way.';
   } catch (err) {
-    const text = err instanceof Error ? err.message : 'Could not send the reset link.';
-    if (message) message.textContent = /smtp|mail/i.test(text) ? `Mail is not configured yet: ${text}` : text;
+    // Only rate-limit and network problems are shown; anything else must not reveal whether the account exists.
+    const code = (err as { code?: number } | null)?.code;
+    if (!message) return;
+    if (code === 429) message.textContent = 'Too many requests. Please wait a few minutes and try again.';
+    else if (err instanceof TypeError || code === 0) message.textContent = 'Could not reach Potli. Check your connection and try again.';
+    else message.textContent = 'If that email has a Potli account, a reset link is on its way.';
   } finally {
     if (submit) submit.disabled = false;
   }
@@ -377,11 +390,19 @@ async function handleResetPassword(event: SubmitEvent): Promise<void> {
       password,
     });
     clearRecoveryLink();
-    currentUser = await loadProfile();
-    if (message) message.textContent = 'Password updated. Taking you to your dashboard...';
-    window.location.hash = '#dashboard';
+    authNotice = { route: '#login', text: 'Password updated. Log in with your new password.' };
+    window.location.hash = '#login';
   } catch (err) {
-    if (message) message.textContent = err instanceof Error ? err.message : 'Could not update the password.';
+    if (message) {
+      message.textContent = err instanceof Error ? err.message : 'Could not update the password.';
+      if (!form.querySelector('.new-link') && recoveryLink) {
+        const link = document.createElement('a');
+        link.className = 'new-link';
+        link.href = '#forgot-password';
+        link.textContent = 'Request a new link';
+        message.insertAdjacentElement('afterend', link);
+      }
+    }
   } finally {
     if (submit) submit.disabled = false;
   }
@@ -399,20 +420,51 @@ function handlePartnerAuth(event: SubmitEvent): void {
   void handleLogin(event);
 }
 
+// The contract's `#/…` URLs for the original pages map onto the existing page renderers.
+const PAGE_ALIASES: Record<string, string> = {
+  '#/': '',
+  '#/login': '#login',
+  '#/admin/login': '#admin-login',
+  '#/partner': '#partner-signup',
+  '#/forgot-password': '#forgot-password',
+  '#/reset-password': '#reset-password',
+};
+
+function showStatusPage(app: HTMLElement, content: ReturnType<typeof notFoundPage>): void {
+  mount(app, content);
+  app.querySelector('[data-action="sign-out"]')?.addEventListener('click', () => void signOut());
+  focusHeading(app);
+}
+
 function render(): void {
   const app = document.querySelector<HTMLDivElement>('#app');
   if (!app) throw new Error('App root not found');
   document.body.classList.remove('menu-is-open');
-  const hash = window.location.hash;
-  if (hash === '#dashboard') {
-    app.innerHTML = currentUser ? dashboardPage(currentUser) : loginPage();
-    wireInteractions();
+  leaveRoute();
+  const fullHash = window.location.hash;
+  const bare = fullHash.split('?')[0] ?? '';
+  const query = parseHash(fullHash).query;
+
+  if (bare === '#dashboard') {
+    const me = getMe();
+    window.location.hash = me ? homeFor(me) : '#login';
     return;
   }
-  if ((hash === '#login' || hash === '#admin-login') && currentUser) {
-    window.location.hash = '#dashboard';
+  if (bare.startsWith('#/') && !(bare in PAGE_ALIASES)) {
+    void mountRoute(app, routes, fullHash, getMe(), {
+      forbidden: (me, roles) => showStatusPage(app, forbiddenPage(me, roles)),
+      notFound: () => showStatusPage(app, notFoundPage()),
+    }).then(() => focusHeading(app));
     return;
   }
+
+  const hash = PAGE_ALIASES[bare] ?? bare;
+  const me = getMe();
+  if ((hash === '#login' || hash === '#admin-login') && me) {
+    window.location.hash = sanitizeNext(query.get('next')) ?? homeFor(me);
+    return;
+  }
+  const forgotRole = query.get('role');
   app.innerHTML = hash === '#login'
     ? loginPage()
     : hash === '#admin-login'
@@ -420,11 +472,12 @@ function render(): void {
       : hash === '#partner-signup'
         ? partnerPage()
         : hash === '#forgot-password'
-          ? forgotPasswordPage()
+          ? forgotPasswordPage(forgotRole === 'admin' || forgotRole === 'storage_partner' ? forgotRole : 'traveler')
           : hash === '#reset-password'
             ? resetPasswordPage()
             : landingPage();
   wireInteractions();
+  if (bare.startsWith('#/') || !bare) focusHeading(app);
 }
 
 async function init(): Promise<void> {
@@ -436,7 +489,16 @@ async function init(): Promise<void> {
     return;
   }
 
-  currentUser = await loadProfile();
+  try {
+    await loadProfile();
+  } catch {
+    // a disabled account or an unreachable API reads as signed out
+  }
+  if (verifyLink) {
+    window.location.hash = '#/verify-email';
+    render();
+    return;
+  }
   if (recoveryLink) {
     showResetForm();
     return;

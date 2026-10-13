@@ -22,8 +22,9 @@ Or let the root bootstrap do everything: `npm run setup` from `code/`.
 Required env (see `.env.example`): `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`,
 `DATABASE_URL`, and - only when `DATABASE_WS_PROXY` is set - `POTLI_DB_EMAIL` /
 `POTLI_DB_PASSWORD`, the infrastructure account whose short-lived token is used as
-the database password. `APPWRITE_API_KEY` is not needed to serve traffic - only the
-seed uses it, to create accounts through the Users API.
+the database password. `APPWRITE_API_KEY` is now required at runtime too (role labels,
+disabling users, Storage), as is `HANDOFF_SECRET` (>= 32 random bytes, base64) for the
+derived check-in/pickup codes. The server fails fast naming any missing variable.
 
 `DATABASE_URL` points at the `potli` database inside Appwrite's Postgres, which is
 not published to the internet. On a developer machine it is reached through the
@@ -38,7 +39,12 @@ the transport choice lives in one place. See [../README.md](../README.md).
 | `src/config.ts` | Reads and validates env (`.env` via dotenv) |
 | `src/db.ts` | Composes the shared db client into the API's pool, re-exports profile queries |
 | `src/appwrite.ts` | Account lookups by JWT, server-side sign-in, reachability, public user shape |
-| `src/server.ts` | HTTP routes and error handling |
+| `src/app.ts` | `createApp({ db, appwrite, config })`: middleware order and routers |
+| `src/server.ts` | Process entry: config, connect, listen, jobs, shutdown |
+| `src/http/` | `errors` (envelope), `validate` (zod), `auth` (authenticate, requireRole, ...), `rateLimit`, `upload` |
+| `src/lib/` | `handoff` (OTP/QR + lockout), `serialize` (row to DTO) |
+| `src/routes/` | `system`, `auth`, `files`; `customer.ts`, `partner.ts`, `admin.ts` are empty routers owned by the portal agents |
+| `test/` | vitest + supertest against Docker Postgres with a fake Appwrite |
 
 The schema, the Drizzle client, the profile queries and the migration/seed
 scripts live in the `db` workspace (`../db`) so the API and the scripts share one
@@ -77,5 +83,9 @@ credentials (and vice versa) instead of letting them through.
 ## Checks
 
 ```bash
-npm run typecheck   # tsc --noEmit
+npm run test:db:up   # from code/: throwaway Postgres on TEST_DB_PORT (default 54329)
+npm test             # vitest; refuses any database that is not local and named *_test
+npm run typecheck
 ```
+
+Also: `PATCH /api/v1/me`, `GET /api/v1/files/:fileId`. Errors use `{ error: { code, message, fields? } }`.
