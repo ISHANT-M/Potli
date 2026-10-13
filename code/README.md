@@ -1,7 +1,8 @@
 # Potli application
 
 TypeScript throughout; Node runs the `.ts` files directly through native type
-stripping, so nothing is compiled for development.
+stripping, so nothing is compiled for development. See [ARCHITECTURE.md](ARCHITECTURE.md)
+for the full request and deployment pipeline.
 
 - `frontend/` — TypeScript, HTML5, Tailwind CSS, Vite (dev server on :5173)
 - `backend/` — Express API on Appwrite (auth) + Postgres (:4000)
