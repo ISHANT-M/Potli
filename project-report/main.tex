@@ -52,6 +52,7 @@
 
 \begin{document}
 \raggedbottom
+\emergencystretch=2em
 \hypersetup{pageanchor=false}
 \maketitle
 
@@ -59,9 +60,9 @@
 \hypersetup{pageanchor=true}
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-POTLI is a proposed web application for short-term luggage storage at local shops, hotels, and other businesses. It is intended for travelers who need to leave their bags between transport connections, accommodation check-in times, or other activities. The proposed workflow covers finding storage, reserving a time slot, and verifying drop-off and pickup through a QR code or one-time password (OTP). Storage partners would manage capacity and receive payment for completed bookings, while administrators would review partner applications and service records.
+POTLI is a web application for short-term luggage storage at local shops, hotels, and other businesses. It serves travelers who need to leave their bags between transport connections, accommodation check-in times, or other activities. The system supports finding storage on a list or map, reserving a time slot, and verifying drop-off and pickup through a six-digit one-time password (OTP) or QR code. Storage partners manage listings and capacity, record cash collected at pickup, and owe a 15\% platform fee on each completed booking; administrators approve partners, resolve disputes, and record fee settlements.
 
-This report presents the requirements, system design, prototype implementation, and proposed evaluation. The prototype uses TypeScript and Vite for the frontend, Express for the API, Appwrite for authentication, and PostgreSQL with Drizzle ORM for application profiles. Account access and profile persistence are implemented; listing search, reservations, luggage handoffs, payments, ratings, and administrative operations remain to be developed. The proposed primary evaluation metric is Booking Fulfillment Time (BFT), with a pilot target of a median time no greater than three minutes.
+This report presents the requirements, system design, implementation, and verification of the system. The implementation uses TypeScript and Vite for three role-specific portals (traveler, storage partner, and administrator), Express for the API, Appwrite for authentication and private file storage, and PostgreSQL with Drizzle ORM for application data. Cash on pickup is the only live payment method; online payments, a field pilot, and deployment remain planned. Automated verification comprises 234 backend API tests, 14 frontend unit tests, and 5 end-to-end smoke flows. The primary evaluation metric is Booking Fulfillment Time (BFT), with a pilot target of a median no greater than three minutes; no BFT measurements have been collected yet.
 
 \tableofcontents
 \listoffigures
@@ -74,10 +75,10 @@ This report presents the requirements, system design, prototype implementation, 
 \section{Background and Context}
 Travelers may need temporary luggage storage before hotel check-in, after check-out, or while waiting for a transport connection. Carrying bags during these intervals limits movement and access to other activities. Storage facilities at stations and airports may not be near the traveler's destination, and availability may be difficult to establish in advance. Local businesses offer a possible alternative where suitable storage space is available.
 
-POTLI is designed to connect travelers with participating businesses and maintain a record of each storage booking. Partners would publish their capacity, opening hours, and prices. The system would record both luggage handoffs, and administrators would review partner details and disputed bookings. Finding a location is therefore only one part of the proposed service; reservation and handoff records are also required.
+POTLI connects travelers with participating businesses and maintains a record of each storage booking. Partners publish their capacity, opening hours, and prices. The system records both luggage handoffs, and administrators review partner details and disputed bookings. Finding a location is therefore only one part of the proposed service; reservation and handoff records are also required.
 
 \section{Problem Statement}
-The project addresses the difficulty of finding suitable short-duration luggage storage near a traveler's destination. An informal arrangement may not provide a booking receipt, an availability check, or a consistent record of custody. The proposed system must make these records available without imposing a lengthy procedure on either the traveler or the storage partner.
+The project addresses the difficulty of finding suitable short-duration luggage storage near a traveler's destination. An informal arrangement may not provide a booking receipt, an availability check, or a consistent record of custody. The system makes these records available without imposing a lengthy procedure on either the traveler or the storage partner.
 
 The interface must be usable on ordinary smartphones and understandable to business owners without technical training. Intermittent connectivity is a further design consideration, particularly during physical handoffs. The project uses standard web technologies and does not require dedicated storage hardware.
 
@@ -86,7 +87,7 @@ The interface must be usable on ordinary smartphones and understandable to busin
   \item \textbf{Traveler:} searches, compares locations, books a slot, presents handoff credentials, tracks status, and rates the experience.
   \item \textbf{Storage partner:} registers a business, publishes capacity and hours, confirms drop-off and pickup, and views earnings.
   \item \textbf{Administrator:} verifies partners, audits bookings and fees, reviews reports, and resolves flagged cases.
-  \item \textbf{Payment gateway:} processes collections, refunds, payouts, and transaction status in the planned system.
+  \item \textbf{Payment gateway:} planned external service for UPI collections and refunds; it is not yet integrated, and cash on pickup is used instead.
 \end{itemize}
 
 \section{Project Objectives}
@@ -95,11 +96,11 @@ The interface must be usable on ordinary smartphones and understandable to busin
   \item Implement secure role-based authentication and a persistent data model for travelers, storage partners, and administrators.
   \item Build a booking lifecycle with availability validation, QR/OTP-based drop-off and pickup, timestamps, and photographic handoff evidence.
   \item Instrument the workflow so that median BFT and handoff success can be measured objectively.
-  \item Prepare the system for payment settlement, administrative oversight, repeatable deployment, and later geographic scaling.
+  \item Record cash collection and the platform fee ledger, provide administrative oversight, and prepare for online payments, repeatable deployment, and later geographic scaling.
 \end{enumerate}
 
 \section{Scope and Current Status}
-Table~\ref{tab:scope} summarizes the prototype's current scope. The design diagrams also cover features scheduled for later development.
+Table~\ref{tab:scope} summarizes the current scope. Items marked planned are modeled in the design but not built.
 
 \begin{table}[H]
 \centering
@@ -107,12 +108,18 @@ Table~\ref{tab:scope} summarizes the prototype's current scope. The design diagr
 \toprule
 \textbf{Capability} & \textbf{Status} & \textbf{Evidence} \\
 \midrule
-Landing and account-access pages & \implemented & Landing page, role-specific login, partner registration form, and account summary pages \\
-Versioned authentication API & \implemented & \path{/api/v1/health}, \path{/api/v1/auth/login}, and \path{/api/v1/auth/me} \\
-Account and profile persistence & \implemented & Appwrite accounts; PostgreSQL \texttt{profiles} and \texttt{partner\_profiles} \\
-Search and listing availability & \planned & Modeled by DFD process 2.0 and UML interactions \\
-Booking and QR/OTP handoff & \planned & Modeled by DFD processes 3.1--3.5 \\
-Payments, payouts, ratings, and disputes & \planned & Included in approved design and later deliverables \\
+Traveler, partner, and admin portals & \implemented & Role-specific interfaces in \path{code/frontend}, including partner self sign-up \\
+Authentication, email verification, recovery & \implemented & Appwrite sessions and JWTs, verified by \path{/api/v1/auth/me}; mail via Resend \\
+Search with list and map view & \implemented & Listings API and Leaflet/OpenStreetMap map \\
+Booking with capacity check & \implemented & Transactional creation directly in \texttt{Booked} \\
+QR/OTP handoff and drop-off photos & \implemented & Derived codes, five-attempt lockout, private Appwrite bucket \\
+Cash on pickup and 15\% fee ledger & \implemented & \texttt{payments} and \texttt{fee\_settlements} tables, admin settlement \\
+Ratings, disputes, audit log, user disable & \implemented & \texttt{ratings}, \texttt{disputes}, \texttt{audit\_log} and admin routes \\
+Partner approval and administration & \implemented & Approval workflow, listing flags, booking cancellation \\
+Booking expiry & \implemented & Periodic background job \\
+Online payments (UPI, card) & \planned & Shown as ``coming soon''; \texttt{PendingPayment} reserved \\
+Field pilot and BFT measurement & \planned & No pilot run yet \\
+Production deployment & \planned & Staging and hosting not yet configured \\
 \bottomrule
 \end{tabular}
 \caption{Implemented and planned project scope}
@@ -134,7 +141,7 @@ An administrator should be able to approve or reject partner applications, inspe
 \section{Non-Functional Requirements}
 \begin{itemize}[leftmargin=*]
   \item \textbf{Usability:} short forms, clear role-specific screens, and a mobile-responsive interface.
-  \item \textbf{Security:} salted password hashes, signed expiring tokens, authorization checks, server-side validation, secret management, and protected handoff evidence. Authentication controls should follow established web guidance~\cite{owasp-auth}.
+  \item \textbf{Security:} credentials held by an identity provider, signed expiring tokens, authorization checks, server-side validation, secret management, and protected handoff evidence. Authentication controls should follow established web guidance~\cite{owasp-auth}.
   \item \textbf{Reliability:} explicit booking states and idempotent state transitions to avoid duplicate confirmations.
   \item \textbf{Performance:} indexed database queries, pagination, compressed assets, and a median BFT target of at most three minutes.
   \item \textbf{Scalability:} stateless API instances and a database structure that can later support indexed location queries.
@@ -152,7 +159,7 @@ Figure~\ref{fig:usecase} places traveler, partner, and administrator interaction
 \end{figure}
 
 \section{Activity Model}
-The activity diagram in Figure~\ref{fig:activity} follows the complete workflow across traveler, platform, storage partner, and administrator swimlanes. It includes partner approval, discovery, reservation, verification, storage, retrieval, and completion. The model is broader than the current prototype and acts as the implementation roadmap.
+The activity diagram in Figure~\ref{fig:activity} follows the complete workflow across traveler, platform, storage partner, and administrator swimlanes. It includes partner approval, discovery, reservation, verification, storage, retrieval, and completion. The model also shows online-payment concerns that are not yet built; the implemented system uses cash on pickup.
 
 \begin{figure}[H]
 \centering
@@ -164,9 +171,9 @@ The activity diagram in Figure~\ref{fig:activity} follows the complete workflow 
 \chapter{Methodology and Design}
 
 \section{Development Approach}
-Development is organized into increments. The first establishes the frontend, authentication API, and profile database. The next introduces storage listings and search, followed by reservations and luggage handoffs. Partner and administrator operations, payment processing, testing, and deployment follow these core functions.
+Development was organized into increments: the frontend, authentication API, and profile database first, then listings and search, reservations and luggage handoffs, partner and administrator operations, and automated testing. Online payments, the pilot, and deployment remain.
 
-Figure~\ref{fig:gantt} presents the approved development schedule from requirements analysis to the launch demonstration. It records planned activities, not their completion status.
+Figure~\ref{fig:gantt} presents the approved development schedule from requirements analysis to the launch demonstration. It records planned activities, not their completion status. The image-upload activity is labeled S3 in the chart; the implementation uses Appwrite Storage.
 
 \begin{landscape}
 \begin{figure}[H]
@@ -178,18 +185,19 @@ Figure~\ref{fig:gantt} presents the approved development schedule from requireme
 \end{landscape}
 
 \section{High-Level Architecture}
-POTLI uses a three-tier web architecture:
+POTLI uses a three-tier web architecture with a shared domain module:
 \begin{enumerate}[leftmargin=*]
-  \item \textbf{Presentation layer:} a TypeScript application bundled with Vite~\cite{vite}. It renders the public and account pages and uses Appwrite's Web SDK for authentication.
-  \item \textbf{Application layer:} an Express~\cite{express} API running on Node.js. The current endpoints are grouped under \path{/api/v1} and provide health checks, login, and authenticated profile access.
-  \item \textbf{Data layer:} PostgreSQL~\cite{postgresql}, accessed through a shared Drizzle ORM~\cite{drizzle} workspace and the \texttt{pg} driver. Application roles and partner details are stored here. Appwrite~\cite{appwrite} manages identity and credentials separately.
+  \item \textbf{Presentation layer:} a TypeScript application bundled with Vite~\cite{vite} that provides traveler, partner, and administrator portals. Maps use Leaflet with OpenStreetMap tiles, and sign-in uses Appwrite's Web SDK.
+  \item \textbf{Application layer:} an Express~\cite{express} API on Node.js under \path{/api/v1}. HTTP middleware provides authentication and role guards, request validation, rate limiting, and upload handling. Routers serve traveler, partner, administrator, file, and system endpoints. A handoff-code service derives OTPs and QR payloads, and a background job expires overdue bookings.
+  \item \textbf{Data layer:} PostgreSQL~\cite{postgresql}, accessed through a shared Drizzle ORM~\cite{drizzle} workspace and the \texttt{pg} driver. Appwrite~\cite{appwrite} manages identity, credentials, email verification, and private file buckets for drop-off and listing photos.
+  \item \textbf{Shared domain module:} \path{code/shared} holds booking statuses and allowed transitions, pricing and fee calculation, and API types, used by both frontend and backend so that rules are defined once.
 \end{enumerate}
 
-The browser signs in to Appwrite and requests a JSON Web Token (JWT)~\cite{jwt} for the current session. It sends this token to the backend using the Bearer scheme. The backend asks Appwrite to identify the account and retrieves the corresponding application profile from PostgreSQL. An account without a profile receives a default traveler profile on its first authenticated profile request. Non-browser clients can use the backend login endpoint. Search, booking, photo storage, and payment services have not yet been added.
+The browser signs in to Appwrite and requests a JSON Web Token (JWT)~\cite{jwt} for the current session. It sends the token to the backend using the Bearer scheme. The backend asks Appwrite to identify the account and loads the application profile from PostgreSQL; an account without a profile receives a default traveler profile. Photos are uploaded to the backend, validated, and stored in Appwrite buckets; handoff photos are served only through an authorized backend route.
 
 \section{Data Flow Diagrams}
 \subsection{Level 0: Context}
-The Level 0 DFD (Figure~\ref{fig:dfd0}) treats POTLI as a single process. Registration, search, booking, business updates, administration, and payment data cross the system boundary through four external entities.
+The Level 0 DFD (Figure~\ref{fig:dfd0}) treats POTLI as a single process. Registration, search, booking, business updates, administration, and payment data cross the system boundary through four external entities; the payment gateway is planned for online payments.
 
 \begin{figure}[H]
 \centering
@@ -199,7 +207,7 @@ The Level 0 DFD (Figure~\ref{fig:dfd0}) treats POTLI as a single process. Regist
 \end{figure}
 
 \subsection{Level 1: System Decomposition}
-Figure~\ref{fig:dfd1} decomposes the platform into account management (1.0), storage listing management (2.0), bookings and handoffs (3.0), payment processing (4.0), and platform administration (5.0). Four conceptual stores hold user/partner data, listings, bookings, and payments.
+Figure~\ref{fig:dfd1} decomposes the platform into account management (1.0), storage listing management (2.0), bookings and handoffs (3.0), payment processing (4.0), and platform administration (5.0). Four conceptual stores hold user/partner data, listings, bookings, and payment and fee records. Process 4.0 currently covers cash collection and the platform fee ledger.
 
 \begin{landscape}
 \begin{figure}[H]
@@ -211,7 +219,7 @@ Figure~\ref{fig:dfd1} decomposes the platform into account management (1.0), sto
 \end{landscape}
 
 \subsection{Level 2: Booking and Handoff}
-The detailed DFD in Figure~\ref{fig:dfd2} expands process 3.0. A request is validated against listing data, a booking is created after payment status is received, the drop-off is verified and recorded, and pickup completes the booking while restoring capacity.
+The detailed DFD in Figure~\ref{fig:dfd2} expands process 3.0. A request is validated against listing data, a cash-on-pickup booking is created directly in \texttt{Booked}, the drop-off is verified and recorded, and pickup completes the booking while restoring capacity.
 
 \begin{landscape}
 \begin{figure}[H]
@@ -223,17 +231,17 @@ The detailed DFD in Figure~\ref{fig:dfd2} expands process 3.0. A request is vali
 \end{landscape}
 
 \section{Domain Model}
-The class model in Figure~\ref{fig:class} connects the common \texttt{User} identity to traveler, partner, and administrator roles. It separates a partner's business profile from storage listings and composes booking records with handoff and payment information. Ratings remain optional because they occur after successful pickup.
+The class model in Figure~\ref{fig:class} connects the common \texttt{User} identity to traveler, partner, and administrator roles. It separates a partner's business profile from storage listings and composes booking records with handoff and payment information. Fee settlements, disputes, and audit records support administration, and ratings remain optional because they occur after successful pickup. Credentials are held by Appwrite, so the model stores no password hash. Enumerations match the database.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.82\textwidth,height=0.8\textheight,keepaspectratio]{class-diagram.png}
-\caption{Planned POTLI domain class diagram}
+\caption{POTLI domain class diagram}
 \label{fig:class}
 \end{figure}
 
 \section{Component Model}
-The component diagram in Figure~\ref{fig:component} describes the current implementation rather than the planned business workflow. The browser application uses the backend REST API and Appwrite's Web SDK. The backend depends on configuration, an identity adapter, and the shared database workspace. Appwrite provides account services, while PostgreSQL stores application profiles. Dashed arrows indicate dependencies; circles and semicircles identify provided and required interfaces.
+The component diagram in Figure~\ref{fig:component} describes the implementation. The browser application uses the backend REST API, the shared domain module, and Appwrite's Web SDK. The backend applies HTTP middleware, mounts the traveler, partner, and admin routers, runs the expiry job, and uses the handoff code service. An identity adapter reaches Appwrite Auth and Appwrite Storage, and the database workspace reaches PostgreSQL, which holds ten tables. Dashed arrows indicate dependencies; circles and semicircles identify provided and required interfaces.
 
 \begin{landscape}
 \begin{figure}[H]
@@ -246,7 +254,7 @@ The component diagram in Figure~\ref{fig:component} describes the current implem
 
 \section{Behavioral Models}
 \subsection{Sequence Diagram}
-Figure~\ref{fig:sequence} shows the proposed interaction among the traveler, web application, backend, database, payment gateway, and partner. It covers discovery, authentication, booking, handoff, settlement, and rating. The authentication exchange is a design-level view; the current implementation delegates identity checks to Appwrite.
+Figure~\ref{fig:sequence} shows the interaction among the traveler, web application, backend, database, Appwrite Auth and Storage, and partner. It covers discovery, login through an Appwrite session and JWT, cash-on-pickup booking, drop-off with photo upload, pickup with cash collection and fee recording, and rating. The payment gateway is shown as planned only; nothing is charged at booking.
 
 \clearpage
 \begin{figure}[H]
@@ -258,7 +266,7 @@ Figure~\ref{fig:sequence} shows the proposed interaction among the traveler, web
 \clearpage
 
 \subsection{Collaboration Diagram}
-The collaboration diagram (Figure~\ref{fig:collaboration}) presents the booking phase as numbered object-to-object messages rather than a time axis. It emphasizes the links among the web app, booking service, listing store, payment gateway, booking store, and partner.
+The collaboration diagram (Figure~\ref{fig:collaboration}) presents the booking phase as numbered object-to-object messages rather than a time axis. It covers search, login, and cash-on-pickup booking, and emphasizes the links among the web app, identity provider, booking service, listing store, booking store, and partner; the payment gateway appears as a planned dependency.
 
 \begin{landscape}
 \begin{figure}[H]
@@ -270,7 +278,7 @@ The collaboration diagram (Figure~\ref{fig:collaboration}) presents the booking 
 \end{landscape}
 
 \subsection{State Diagram}
-The booking state machine in Figure~\ref{fig:state} makes valid transitions explicit. A validated request enters \texttt{PendingPayment}; successful capture creates \texttt{Booked}; verified handoffs lead through \texttt{Dropped}, \texttt{Stored}, and \texttt{PickedUp}; payout settlement produces \texttt{Completed}. Failed payment, cancellation, or a missed slot enters a terminal exception state.
+The booking state machine in Figure~\ref{fig:state} makes valid transitions explicit. A cash-on-pickup booking is created directly in \texttt{Booked}; \texttt{PendingPayment} is reserved for future online payments. Verified handoffs lead through \texttt{Dropped}, \texttt{Stored}, and \texttt{PickedUp}; recording the cash collected and the 15\% fee produces \texttt{Completed}. A booking may be cancelled or may expire if no drop-off occurs, and administrators may cancel \texttt{Dropped} or \texttt{Stored} bookings during disputes. Refunds apply only to future online payments.
 
 \begin{figure}[H]
 \centering
@@ -281,69 +289,90 @@ The booking state machine in Figure~\ref{fig:state} makes valid transitions expl
 
 \chapter{Implementation Details}
 
-\section{Frontend Prototype}
-The frontend is written in TypeScript, bundled with Vite, and styled with a responsive stylesheet. A single rendering entry point selects the page from the URL hash. The available pages cover the landing page, traveler and administrator login, partner account access, password recovery, and account summaries. Shared SVG icons and consistent form labels are used across these pages.
+\section{Frontend Portals}
+The frontend is written in TypeScript, bundled with Vite, and styled with a responsive stylesheet. A hash-based router selects pages for three portals. Travelers search listings by city on a list or Leaflet/OpenStreetMap map, view a price quote, book a slot, see the current OTP and QR code, rate completed bookings, and raise disputes. Partners register through a self sign-up form, manage listings and opening hours, look up bookings, record drop-off with photographs and pickup with cash collected, and view earnings and platform fees owed. Administrators approve or reject partners, moderate listings, cancel bookings, resolve disputes, record fee settlements, review the audit log, and disable users.
 
-Login forms use Appwrite's Web SDK to establish a session. The frontend then requests a JWT and calls \path{/api/v1/auth/me} to obtain the user's profile and role. Each login page checks that the returned role matches the selected account type. This controls page navigation; it does not replace server-side authorization for future booking or administrative operations. Search submission and partner registration are not yet connected to persistent records.
+Sign-in uses Appwrite's Web SDK to establish a session. The frontend then requests a JWT and calls \path{/api/v1/auth/me} for the profile and role. Login pages check that the returned role matches the selected portal; this controls navigation only, and every operation is authorized again on the server. Cash on pickup is the only live payment method; UPI and card are shown as ``coming soon''. Password recovery and email verification use Appwrite, with mail delivered through Resend. The reset page removes the recovery secret from the URL after use.
 
-Password-recovery and reset forms call Appwrite's recovery endpoints. The reset page reads the account identifier and recovery secret from the emailed link and removes them from the URL after a successful reset. Email delivery requires the Appwrite mail service to be configured.
-
-\section{Backend Authentication API}
-The backend uses TypeScript on Node.js and Express with CORS and JSON middleware. Its main implemented responsibilities are:
+\section{Backend API and Middleware}
+The backend runs on Node.js and Express with Helmet, CORS, a 100~KB JSON limit, and a global rate limiter. Routers are mounted under \path{/api/v1}:
 \begin{itemize}[leftmargin=*]
-  \item checking PostgreSQL connectivity and Appwrite availability through \path{GET /api/v1/health};
-  \item submitting email/password credentials to Appwrite and returning a JWT through \path{POST /api/v1/auth/login}; and
-  \item identifying the caller through Appwrite, loading or creating the application profile, and returning it through \path{GET /api/v1/auth/me}.
+  \item \textbf{system and auth:} health checks, \path{POST /auth/login}, and \path{GET /auth/me};
+  \item \textbf{traveler:} listings, quotes, bookings, cancellation, ratings, and disputes;
+  \item \textbf{partner:} application, profile, listings and covers, handoff lookup, check-in, drop-off, pickup, earnings, and fee settlements;
+  \item \textbf{admin:} partner review, users, listings, bookings, disputes, ledger and settlements, and audit; and
+  \item \textbf{files:} authorized access to stored photographs.
 \end{itemize}
-
-The backend identity adapter calls Appwrite's Account API. For server-side login, it carries the session cookie returned by Appwrite to the JWT endpoint. For authenticated requests, it sends the caller's JWT to Appwrite to obtain the account identity. It does not store passwords or implement token signing locally.
-
-The backend database module provides access to the shared Drizzle workspace. A central error handler receives failures from asynchronous routes. All current API routes are versioned.
+Middleware authenticates the Bearer JWT through Appwrite, loads the profile, and enforces role, verified-email, and approved-partner guards. Request bodies and parameters are validated with schemas. Login is limited to ten attempts per window, per-user limits protect sensitive routes, and uploads are limited to four images of at most 5~MB, checked by file signature as JPEG, PNG, or WebP. A central error handler hides internal details. A background job runs every five minutes and expires bookings that were never dropped off.
 
 \section{Database Schema}
-The Drizzle schema defines two application tables. The \texttt{profiles} table has a generated UUID primary key, a unique \texttt{appwrite\_user\_id}, email, full name, role, and creation and update timestamps. The role is restricted to \texttt{traveler}, \texttt{storage\_partner}, or \texttt{admin}. The \texttt{partner\_profiles} table stores business name and phone number and references the local profile UUID through a cascading foreign key.
+The Drizzle schema defines ten tables: \texttt{profiles}, \texttt{partner\_profiles}, \texttt{listings}, \texttt{bookings}, \texttt{handoff\_records}, \texttt{payments}, \texttt{fee\_settlements}, \texttt{ratings}, \texttt{disputes}, and \texttt{audit\_log}. Profiles link to Appwrite accounts by a unique \texttt{appwrite\_user\_id}; credentials are never stored locally. Partner profiles carry an approval status (pending, approved, rejected, or suspended). Listings store location, capacity, hourly rate, daily cap, opening hours and days, and a status (active, paused, or flagged), with check constraints on ranges. Bookings hold a unique code, bag count, slot, status, quoted and final price in paise, payment method, timestamps for each stage, attempt counters, and an idempotency key. Handoff records are unique per booking and type and store the verifying user, bag count, and photograph file identifiers. Payments record method, status, amount, platform fee, partner share, collection details, and an optional settlement. Enumerations for roles, statuses, methods, and handoff types are database types that mirror the shared module. SQL migrations are applied in filename order, and a seed script creates development accounts through Appwrite's Users API.
 
-Appwrite accounts are linked by their string identifiers, not by a foreign key to an authentication table. A profile is created by the backend when an authenticated account first requests profile access. This path assigns the traveler role; users cannot supply a different role through that endpoint. The current migration does not define signup triggers or row-level security policies.
+\section{Booking Lifecycle and Capacity Transaction}
+Allowed status transitions are defined once in the shared module and enforced by atomic updates, so a stale or repeated request cannot move a booking twice. Booking creation runs in one database transaction: the listing row is locked, overlapping bookings that still occupy shelf space are counted (overstaying bags are counted until now), and the booking is inserted only if the requested bags fit. An idempotency key makes a retried request return the original booking, and the traveler is given a unique booking code. The price is quoted from the hourly rate with a daily cap and checked against opening hours.
 
-SQL migrations are applied in filename order, with completed versions recorded in a \texttt{migrations} table. The development seed script creates or updates Appwrite accounts through the Users API and writes their roles and partner details to PostgreSQL. Seeding requires a server-side Appwrite API key as well as database access.
+\section{Handoff Codes and Photographs}
+Each handoff stage has a six-digit OTP derived from a server secret, the booking identifier, and the stage (drop-off or pickup) using HMAC-SHA-256; nothing is stored, and comparison is constant-time. The QR payload encodes the booking code, stage, and OTP. Travelers see only the code for the current stage. Five consecutive failed attempts lock the booking's code entry for 15 minutes. At drop-off the partner uploads photographs, which are validated and stored in a private Appwrite Storage bucket; only the file identifiers are stored in the handoff record. Listing photographs use a separate bucket.
 
-Later migrations will add the D2--D4 stores for listings, capacity, bookings, handoffs, and transactions. Availability checks and reservation writes must be performed transactionally to prevent concurrent bookings from consuming the same capacity.
+\section{Cash Payments and Platform Fee Ledger}
+Nothing is charged at booking. At pickup the partner records the cash collected; the final price includes any overstay beyond the booked slot, and the platform fee of 15\% is calculated and recorded on the payment together with the partner's share. Because the partner receives the cash directly, partners owe platform fees to POTLI. Administrators group unsettled completed payments into a fee settlement with a reference, and partners can view their dues and settlement history. Online payment methods remain disabled until a gateway is integrated.
+
+\section{Administration}
+Administrators review partner applications (approval is required before a partner can publish listings), flag listings, cancel held bookings, and resolve disputes raised by travelers or partners. Cancelling, approvals, fee settlements, user disabling, and booking expiry write entries to an append-only audit log containing the actor, entity, metadata, and IP address.
 
 \section{Security and Privacy Considerations}
-Appwrite manages passwords, sessions, and JWT issuance. The backend identifies a caller before returning the caller's application profile, and it assigns a default role when creating that profile. Database credentials and the administrative API key used for seeding must remain server-side.
+Controls now implemented are summarized in Table~\ref{tab:security}. Authentication follows established guidance~\cite{owasp-auth}.
 
-Further work is required before public deployment. Protected domain endpoints need server-side role checks, request validation, rate limiting, and audit records. CORS settings must be restricted to the deployed frontend, and error responses must avoid exposing internal database details. Session expiry, revocation, and recovery-link handling also require integration tests. Handoff photographs and personal information will need access controls and defined retention periods. These are requirements for subsequent development, not controls established by the present prototype.
+\begin{table}[H]
+\centering
+\begin{tabular}{P{0.28\textwidth}P{0.62\textwidth}}
+\toprule
+\textbf{Area} & \textbf{Control} \\
+\midrule
+Identity & Credentials, sessions, JWTs, and email verification held by Appwrite \\
+Authorization & Server-side role, verified-email, and approved-partner guards \\
+Input & Schema validation, body size limit, image signature and size checks \\
+Abuse & Global, login, and per-user rate limits; five-attempt OTP lockout \\
+Handoff evidence & Private photo bucket served through an authorized route \\
+Integrity & Atomic transitions, capacity lock, idempotency keys, audit log \\
+Transport headers & Helmet headers and restricted CORS configuration \\
+\bottomrule
+\end{tabular}
+\caption{Implemented security controls}
+\label{tab:security}
+\end{table}
+
+Remaining work includes production secret management, retention periods for photographs and personal data, a review of rate-limit and recovery-link handling in a deployed environment, and a security assessment before public launch. Online payment integration will add its own requirements.
 
 \chapter{Testing and Evaluation}
 
 \section{Testing Methodology}
-The planned verification strategy combines:
+Verification combines:
 \begin{itemize}[leftmargin=*]
-  \item \textbf{Unit tests} for validation, status transitions, pricing, token handling, and utility functions;
-  \item \textbf{API integration tests} against an isolated PostgreSQL database for login, authorization, booking races, handoff codes, and invalid transitions;
-  \item \textbf{Frontend tests} for route rendering, form behavior, error handling, responsive layout, and accessibility;
-  \item \textbf{End-to-end tests} for traveler booking through partner pickup and administrator review;
-  \item \textbf{Performance tests} for nearby search and concurrent booking creation; and
-  \item \textbf{Pilot user testing} with representative travelers and local businesses.
+  \item \textbf{Backend API tests} against an isolated PostgreSQL database covering authorization, booking races, handoff codes, payments, and invalid transitions;
+  \item \textbf{Frontend unit tests} for shared utilities;
+  \item \textbf{End-to-end smoke tests} that drive the portals in a browser; and
+  \item \textbf{Pilot user testing} with representative travelers and local businesses, which has not yet been run.
 \end{itemize}
 
 \section{Current Verification Status}
-The repository provides scripts for TypeScript checking, frontend production builds, SQL migrations, and development-account seeding. The checks listed in Table~\ref{tab:verification} are available development tools; the table does not report test results. Live authentication checks require both Appwrite and PostgreSQL, while recovery-email tests also require a configured mail service. An automated backend test suite and the complete booking workflow are not yet available. No pilot performance measurements have been collected.
+Table~\ref{tab:verification} reports the automated checks implemented in the repository. Live authentication and recovery-email checks additionally require Appwrite and a configured mail service. No performance tests or pilot measurements have been carried out, so no BFT result is reported.
 
 \begin{table}[H]
 \centering
 \begin{tabular}{P{0.32\textwidth}P{0.22\textwidth}P{0.36\textwidth}}
 \toprule
-\textbf{Check} & \textbf{Status} & \textbf{Interpretation} \\
+\textbf{Check} & \textbf{Status} & \textbf{Scope} \\
 \midrule
-TypeScript compilation and Vite production build & Available & Detects type/build failures and produces deployable static assets \\
-Database migration and seed scripts & Available & Applies SQL migrations; seeding also requires Appwrite access and an administrative API key \\
-Automated backend unit/integration suite & Not yet implemented & Needed to verify protected operations and error cases \\
-End-to-end booking workflow & Not yet testable & Booking and handoff modules remain planned \\
-Pilot performance measurements & Not yet collected & Must follow implementation and field trial \\
+Backend API tests & 234 tests & Routes, authorization, booking capacity, handoff, payments, administration \\
+Frontend unit tests & 14 tests & Shared frontend utilities \\
+End-to-end smoke flows & 5 flows (Playwright) & Core portal journeys in a browser \\
+TypeScript compilation and Vite build & Available & Type and build checks \\
+Performance and concurrency load tests & Not yet run & Search and booking under load \\
+Pilot and BFT measurements & Not yet collected & Requires deployment and field trial \\
 \bottomrule
 \end{tabular}
-\caption{Mid-semester verification status}
+\caption{Verification status}
 \label{tab:verification}
 \end{table}
 
@@ -372,31 +401,31 @@ A small locality near a railway station or busy market can provide a controlled 
 \chapter{Conclusion}
 
 \section{Summary of Work}
-The work completed so far includes requirements analysis, the system architecture, data flow and UML models, a responsive frontend, a versioned authentication API, and an application profile schema. The prototype connects Appwrite account access with PostgreSQL profile persistence.
+POTLI now provides a working luggage-storage service in three portals: search on a list or map, capacity-checked booking, OTP and QR handoffs with drop-off photographs, cash collection with a 15\% platform fee ledger, partner approval, ratings, disputes, an audit log, and administrative settlement. The design diagrams, database schema, and implementation have been aligned, and the system is covered by 234 backend tests, 14 frontend tests, and 5 end-to-end flows.
 
-The prototype does not yet provide a complete luggage-storage service. Listing search, reservations, QR/OTP handoffs, payments, ratings, and administrative operations remain to be implemented and tested.
+Online payments, a field pilot, and deployment remain outstanding. The report therefore makes no performance or BFT claims.
 
 \section{Key Findings}
 \begin{itemize}[leftmargin=*]
-  \item A booking record must retain the information needed to verify custody: handoff credentials, timestamps, and photographic evidence.
-  \item Availability and booking creation form the central consistency boundary; they must be updated transactionally to prevent overbooking.
-  \item Account identity is managed by Appwrite. PostgreSQL stores application roles and business records.
-  \item The BFT target is useful only when timestamps and state definitions are implemented before pilot measurement.
+  \item A booking record retains the information needed to verify custody: handoff credentials, timestamps, and photographic evidence.
+  \item Availability and booking creation form the central consistency boundary and are updated in one locked transaction to prevent overbooking.
+  \item Identity is managed by Appwrite; PostgreSQL stores roles and business records, and shared transition and pricing rules keep frontend and backend consistent.
+  \item With cash on pickup, the platform fee becomes a receivable that needs an explicit ledger and settlement process.
+  \item The BFT target is meaningful only once the system is deployed and measured in a pilot.
 \end{itemize}
 
 \section{Future Work and Recommendations}
 \begin{enumerate}[leftmargin=*]
-  \item Implement listing management and indexed location search.
-  \item Add transactional booking creation and dynamic QR/OTP credentials.
-  \item Build protected partner handoff screens with secure photo upload.
-  \item Introduce role-authorization middleware and comprehensive automated tests.
-  \item Integrate a sandbox payment gateway before enabling real collections or payouts.
-  \item Build administrator verification, audit, analytics, and dispute tools.
-  \item Deploy a staging environment, run the proposed pilot, and replace target values with measured results.
+  \item Integrate a sandbox payment gateway (UPI) and enable \texttt{PendingPayment}, refunds, and automated fee collection.
+  \item Deploy a staging environment with managed secrets and monitoring.
+  \item Add load tests for nearby search and concurrent booking.
+  \item Run the proposed pilot and replace target values with measured BFT and handoff success rates.
+  \item Define retention periods for photographs and personal data, and complete a pre-launch security review.
+  \item Extend notifications and analytics for partners and administrators.
 \end{enumerate}
 
 \section{Final Remarks}
-The next milestone is a tested workflow from listing search to verified pickup. It must include a reliable capacity check, a persistent booking record, and both handoff confirmations. Completing this workflow will allow the team to measure BFT and evaluate the service with the proposed pilot participants.
+The next milestone is deployment and a pilot with local partners. The existing timestamps and booking states allow BFT and handoff success to be measured directly once real users are involved.
 
 \printbibliography[heading=bibintoc]
 
