@@ -2,10 +2,9 @@ flowchart TB
     T([":Traveler"])
     W["W :WebApp"]
     API["API :BookingService"]
-    IdP["IdP :AppwriteAuth"]
     LDB[("D2 :ListingStore")]
     BDB[("D3 :BookingStore")]
-    Pay["Pay :PaymentGateway<br/>(planned, UPI coming soon)"]
+    Pay["Pay :PaymentGateway"]
     P([":StoragePartner"])
 
     T -- "1: searchStorage(location)" --> W
@@ -15,17 +14,12 @@ flowchart TB
     API -. "1.2: availableOptions" .-> W
     W -. "1.3: displayOptions()" .-> T
 
-    T -- "2: login(email, password)" --> W
-    W -- "2.1: createSession() → JWT" --> IdP
-    W -- "2.2: getMe(JWT)" --> API
-    API -- "2.3: verifyJwt()" --> IdP
-
-    T -- "3: confirmBooking(listingId, slot, cash)" --> W
-    W -- "3.1: createBooking(details)" --> API
-    API -- "3.2: lockListing(), checkCapacity()" --> LDB
-    API -- "3.3: saveBookingRecord(Booked)" --> BDB
-    API -- "3.4: updateAvailability()" --> LDB
-    API -- "3.5: notifyPartner(bookingId)" --> P
-    API -. "3.6: bookingConfirmation(qrCode)" .-> W
-    W -. "3.7: showConfirmation()" .-> T
-    API -. "planned: chargePayment(amount)" .-> Pay
+    T -- "2: confirmBooking(listingId, slot)" --> W
+    W -- "2.1: createBooking(details)" --> API
+    API -- "2.2: chargePayment(amount)" --> Pay
+    Pay -. "2.3: paymentCaptured" .-> API
+    API -- "2.4: saveBookingRecord()" --> BDB
+    API -- "2.5: updateAvailability()" --> LDB
+    API -- "2.6: notifyPartner(bookingId)" --> P
+    API -. "2.7: bookingConfirmation(qrCode)" .-> W
+    W -. "2.8: showConfirmation()" .-> T

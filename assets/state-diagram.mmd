@@ -1,28 +1,23 @@
 stateDiagram-v2
-    [*] --> Booked : cash on pickup, booking validated (P31, P32)
-    [*] --> PendingPayment : online payments, coming soon (P31)
+    [*] --> PendingPayment : booking request validated (P31)
 
     PendingPayment --> Booked : payment captured (P32)
     PendingPayment --> Cancelled : payment fails / traveler cancels
-    PendingPayment --> Expired : payment window elapses
 
     Booked --> Dropped : partner verifies check-in QR/OTP (P33)
-    Booked --> Cancelled : traveler, partner or admin cancels
     Booked --> Expired : slot window elapses with no drop-off
 
     Dropped --> Stored : drop-off photo captured & recorded (P34)
-    Dropped --> Cancelled : admin cancels (dispute)
 
     Stored --> PickedUp : partner verifies retrieval QR/OTP (P35)
-    Stored --> Cancelled : admin cancels (dispute)
 
-    PickedUp --> Completed : cash collected, 15% fee recorded (P4)
+    PickedUp --> Completed : payout settled, rating requested
 
-    Cancelled --> [*] : refund only for online payments
-    Expired --> [*] : refund only for online payments
+    Cancelled --> [*] : refund issued via payment gateway
+    Expired --> [*] : refund issued via payment gateway
     Completed --> [*]
 
-    note right of Booked
+    note right of PendingPayment
         Booking Fulfillment Time (BFT) is measured
         from search start to entry into Booked.
     end note

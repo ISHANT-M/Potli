@@ -2,18 +2,18 @@ flowchart LR
     T[Traveler]
     P[Storage Partner]
     A[Administrator]
-    G[Payment Gateway - UPI, planned]
+    G[Payment Gateway]
 
     P1((1.0<br/>Manage Accounts))
     P2((2.0<br/>Manage Storage Listings))
     P3((3.0<br/>Manage Bookings & Handoffs))
-    P4((4.0<br/>Process Payments<br/>COD collection and fee ledger))
+    P4((4.0<br/>Process Payments))
     P5((5.0<br/>Administer Platform))
 
     D1[(D1: User & Partner Data)]
     D2[(D2: Storage Listings)]
     D3[(D3: Booking Records)]
-    D4[(D4: Payment and Fee Records)]
+    D4[(D4: Payment Records)]
 
     T -->|Registration and login details| P1
     P1 -->|Account status| T
@@ -36,10 +36,10 @@ flowchart LR
     P3 -->|Payment details| P4
     P4 -->|Payment status| P3
 
-    P4 -->|Online payment and refund requests, planned| G
-    G -->|Online payment and refund status, planned| P4
+    P4 -->|Payment and refund requests| G
+    G -->|Payment and refund status| P4
     P4 <-->|Transaction data| D4
-    P4 -->|Cash collected and earnings information| P
+    P4 -->|Payout and earnings information| P
 
     A -->|Management and approval details| P5
     P5 -->|Reports and dispute information| A

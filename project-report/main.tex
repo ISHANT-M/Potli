@@ -197,7 +197,7 @@ The browser signs in to Appwrite and requests a JSON Web Token (JWT)~\cite{jwt} 
 
 \section{Data Flow Diagrams}
 \subsection{Level 0: Context}
-The Level 0 DFD (Figure~\ref{fig:dfd0}) treats POTLI as a single process. Registration, search, booking, business updates, administration, and payment data cross the system boundary through four external entities; the payment gateway is planned for online payments.
+The Level 0 DFD (Figure~\ref{fig:dfd0}) treats POTLI as a single process. Registration, search, booking, business updates, administration, and payment data cross the system boundary through four external entities. The payment gateway remains part of the approved design; the implemented system uses cash on pickup until it is integrated.
 
 \begin{figure}[H]
 \centering
@@ -207,7 +207,7 @@ The Level 0 DFD (Figure~\ref{fig:dfd0}) treats POTLI as a single process. Regist
 \end{figure}
 
 \subsection{Level 1: System Decomposition}
-Figure~\ref{fig:dfd1} decomposes the platform into account management (1.0), storage listing management (2.0), bookings and handoffs (3.0), payment processing (4.0), and platform administration (5.0). Four conceptual stores hold user/partner data, listings, bookings, and payment and fee records. Process 4.0 currently covers cash collection and the platform fee ledger.
+Figure~\ref{fig:dfd1} decomposes the platform into account management (1.0), storage listing management (2.0), bookings and handoffs (3.0), payment processing (4.0), and platform administration (5.0). Four conceptual stores hold user/partner data, listings, bookings, and payments. In the implementation, process 4.0 records cash collected at pickup and the 15\% platform fee ledger (D4).
 
 \begin{landscape}
 \begin{figure}[H]
@@ -219,7 +219,7 @@ Figure~\ref{fig:dfd1} decomposes the platform into account management (1.0), sto
 \end{landscape}
 
 \subsection{Level 2: Booking and Handoff}
-The detailed DFD in Figure~\ref{fig:dfd2} expands process 3.0. A request is validated against listing data, a cash-on-pickup booking is created directly in \texttt{Booked}, the drop-off is verified and recorded, and pickup completes the booking while restoring capacity.
+The detailed DFD in Figure~\ref{fig:dfd2} expands process 3.0. A request is validated against listing data, a booking is created after payment status is received, the drop-off is verified and recorded, and pickup completes the booking while restoring capacity. With cash on pickup, the implementation creates the booking directly after validation and records payment at pickup.
 
 \begin{landscape}
 \begin{figure}[H]
@@ -231,7 +231,7 @@ The detailed DFD in Figure~\ref{fig:dfd2} expands process 3.0. A request is vali
 \end{landscape}
 
 \section{Domain Model}
-The class model in Figure~\ref{fig:class} connects the common \texttt{User} identity to traveler, partner, and administrator roles. It separates a partner's business profile from storage listings and composes booking records with handoff and payment information. Fee settlements, disputes, and audit records support administration, and ratings remain optional because they occur after successful pickup. Credentials are held by Appwrite, so the model stores no password hash. Enumerations match the database.
+The class model in Figure~\ref{fig:class} connects the common \texttt{User} identity to traveler, partner, and administrator roles. It separates a partner's business profile from storage listings and composes booking records with handoff and payment information. Ratings remain optional because they occur after successful pickup. The implemented schema follows this model; it stores credentials in Appwrite rather than as a password hash, represents partner verification as an approval status, and adds fee-settlement, dispute, and audit tables to support administration.
 
 \begin{figure}[H]
 \centering
@@ -241,7 +241,7 @@ The class model in Figure~\ref{fig:class} connects the common \texttt{User} iden
 \end{figure}
 
 \section{Component Model}
-The component diagram in Figure~\ref{fig:component} describes the implementation. The browser application uses the backend REST API, the shared domain module, and Appwrite's Web SDK. The backend applies HTTP middleware, mounts the traveler, partner, and admin routers, runs the expiry job, and uses the handoff code service. An identity adapter reaches Appwrite Auth and Appwrite Storage, and the database workspace reaches PostgreSQL, which holds ten tables. Dashed arrows indicate dependencies; circles and semicircles identify provided and required interfaces.
+The component diagram in Figure~\ref{fig:component} shows the physical components established at the start of implementation. The browser application uses the backend REST API and Appwrite's Web SDK. The backend depends on configuration, an identity adapter, and the shared database workspace. Appwrite provides account services, while PostgreSQL stores application data. Dashed arrows indicate dependencies; circles and semicircles identify provided and required interfaces. The completed backend adds portal routers, request middleware, a handoff-code service, an expiry job, and Appwrite Storage behind the same identity adapter and database interfaces.
 
 \begin{landscape}
 \begin{figure}[H]
@@ -254,7 +254,7 @@ The component diagram in Figure~\ref{fig:component} describes the implementation
 
 \section{Behavioral Models}
 \subsection{Sequence Diagram}
-Figure~\ref{fig:sequence} shows the interaction among the traveler, web application, backend, database, Appwrite Auth and Storage, and partner. It covers discovery, login through an Appwrite session and JWT, cash-on-pickup booking, drop-off with photo upload, pickup with cash collection and fee recording, and rating. The payment gateway is shown as planned only; nothing is charged at booking.
+Figure~\ref{fig:sequence} shows the designed interaction among the traveler, web application, backend, database, payment gateway, and partner. It covers discovery, authentication, booking, handoff, settlement, and rating. In the implementation, identity checks are delegated to Appwrite, nothing is charged at booking, and the partner records the cash collected at pickup.
 
 \clearpage
 \begin{figure}[H]
@@ -266,7 +266,7 @@ Figure~\ref{fig:sequence} shows the interaction among the traveler, web applicat
 \clearpage
 
 \subsection{Collaboration Diagram}
-The collaboration diagram (Figure~\ref{fig:collaboration}) presents the booking phase as numbered object-to-object messages rather than a time axis. It covers search, login, and cash-on-pickup booking, and emphasizes the links among the web app, identity provider, booking service, listing store, booking store, and partner; the payment gateway appears as a planned dependency.
+The collaboration diagram (Figure~\ref{fig:collaboration}) presents the booking phase as numbered object-to-object messages rather than a time axis. It emphasizes the links among the web app, booking service, listing store, payment gateway, booking store, and partner. The payment-gateway message is replaced by cash on pickup in the current implementation.
 
 \begin{landscape}
 \begin{figure}[H]
@@ -278,7 +278,7 @@ The collaboration diagram (Figure~\ref{fig:collaboration}) presents the booking 
 \end{landscape}
 
 \subsection{State Diagram}
-The booking state machine in Figure~\ref{fig:state} makes valid transitions explicit. A cash-on-pickup booking is created directly in \texttt{Booked}; \texttt{PendingPayment} is reserved for future online payments. Verified handoffs lead through \texttt{Dropped}, \texttt{Stored}, and \texttt{PickedUp}; recording the cash collected and the 15\% fee produces \texttt{Completed}. A booking may be cancelled or may expire if no drop-off occurs, and administrators may cancel \texttt{Dropped} or \texttt{Stored} bookings during disputes. Refunds apply only to future online payments.
+The booking state machine in Figure~\ref{fig:state} makes valid transitions explicit. A validated request enters \texttt{PendingPayment}; successful capture creates \texttt{Booked}; verified handoffs lead through \texttt{Dropped}, \texttt{Stored}, and \texttt{PickedUp}; payout settlement produces \texttt{Completed}. Failed payment, cancellation, or a missed slot enters a terminal exception state. Because only cash on pickup is enabled, the implementation creates bookings directly in \texttt{Booked}, completes them when the partner records the cash collected and the 15\% fee, and reserves \texttt{PendingPayment} for online payments.
 
 \begin{figure}[H]
 \centering
@@ -401,7 +401,7 @@ A small locality near a railway station or busy market can provide a controlled 
 \chapter{Conclusion}
 
 \section{Summary of Work}
-POTLI now provides a working luggage-storage service in three portals: search on a list or map, capacity-checked booking, OTP and QR handoffs with drop-off photographs, cash collection with a 15\% platform fee ledger, partner approval, ratings, disputes, an audit log, and administrative settlement. The design diagrams, database schema, and implementation have been aligned, and the system is covered by 234 backend tests, 14 frontend tests, and 5 end-to-end flows.
+POTLI now provides a working luggage-storage service in three portals: search on a list or map, capacity-checked booking, OTP and QR handoffs with drop-off photographs, cash collection with a 15\% platform fee ledger, partner approval, ratings, disputes, an audit log, and administrative settlement. The implementation follows the approved design diagrams, with the cash-on-pickup deviations described in Chapter 3, and the system is covered by 234 backend tests, 14 frontend tests, and 5 end-to-end flows.
 
 Online payments, a field pilot, and deployment remain outstanding. The report therefore makes no performance or BFT claims.
 

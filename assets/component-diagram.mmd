@@ -1,45 +1,26 @@
 %%{init: {"theme": "base", "themeVariables": {"primaryColor": "#ffffff", "primaryTextColor": "#222222", "primaryBorderColor": "#333333", "lineColor": "#444444", "fontFamily": "Arial"}, "flowchart": {"curve": "linear", "nodeSpacing": 50, "rankSpacing": 65}}}%%
 flowchart TB
-    WEB["«component»<br/>Browser application<br/>code/frontend<br/>Traveller · Partner · Admin portals<br/>Vite bundle · Leaflet map"]
-    SDK["«library»<br/>Appwrite Web SDK<br/>frontend/src/appwrite.ts<br/>Sessions · JWT · recovery"]
-    API["«component»<br/>Backend API<br/>code/backend/src/app.ts<br/>Node.js · Express"]
-    MW["«component»<br/>HTTP middleware<br/>backend/src/http<br/>Auth guards · validation<br/>rate limit · upload"]
-    ROUTES["«component»<br/>Routers<br/>backend/src/routes<br/>Traveller · Partner · Admin<br/>Files · System"]
-    HAND["«component»<br/>Handoff code service<br/>backend/src/lib/handoff.ts<br/>Derived OTP · QR · lockout"]
-    JOB["«component»<br/>Expiry job<br/>backend/src/jobs.ts"]
-    SHARED["«library»<br/>Shared domain module<br/>code/shared<br/>Status transitions · pricing<br/>15% fee · types"]
+    WEB["«component»<br/>Browser application<br/>code/frontend<br/>main.ts · styles.css · Vite bundle"]
+    API["«component»<br/>Backend API<br/>code/backend/src/server.ts<br/>Node.js · Express"]
+    SDK["«library»<br/>Appwrite Web SDK<br/>frontend/src/appwrite.ts<br/>appwrite npm package"]
     CONFIG["«file»<br/>config.ts<br/>backend/src<br/>Environment settings"]
-    AUTH["«component»<br/>Identity adapter<br/>backend/src/appwrite.ts<br/>JWT verification · file storage"]
-    IDP["«external component»<br/>Appwrite Auth<br/>Accounts · sessions · JWTs<br/>Email verification · recovery"]
-    STORE["«external component»<br/>Appwrite Storage<br/>handoff-photos (private)<br/>listing-photos"]
-    DATA["«component»<br/>Database workspace<br/>code/db<br/>Drizzle ORM · pg · migrations"]
-    DB["«database»<br/>PostgreSQL<br/>profiles · partner_profiles · listings<br/>bookings · handoff_records · payments<br/>fee_settlements · ratings · disputes · audit_log"]
+    AUTH["«component»<br/>Identity adapter<br/>backend/src/appwrite.ts<br/>Sign-in · JWT verification"]
+    IDP["«external component»<br/>Appwrite Auth<br/>Accounts · sessions · JWTs<br/>Identity and credential store"]
+    DB["«database»<br/>PostgreSQL<br/>profiles<br/>partner_profiles"]
+    DATA["«component»<br/>Database workspace<br/>code/db: client.ts · profiles.ts<br/>schema.ts · Drizzle ORM · pg"]
 
     REST(("REST API<br/>HTTPS"))
     ACCOUNT(("Account API"))
-    FILES(("Storage API"))
     SQL(("SQL interface"))
 
     WEB ---|requires| REST
-    API ---|provides /api/v1| REST
+    API ---|provides /api/v1/auth · /health| REST
     WEB -. imports .-> SDK
-    WEB -. imports .-> SHARED
-    API -. uses .-> MW
-    API -. mounts .-> ROUTES
-    API -. starts .-> JOB
     API -. imports .-> CONFIG
-    MW -. imports .-> AUTH
-    ROUTES -. uses .-> MW
-    ROUTES -. uses .-> HAND
-    ROUTES -. imports .-> SHARED
-    HAND -. queries .-> DATA
-    ROUTES -. calls .-> AUTH
-    ROUTES -. queries .-> DATA
-    JOB -. calls .-> DATA
+    API -. imports .-> AUTH
+    API -. via backend/src/db.ts .-> DATA
     SDK ---|requires| ACCOUNT
     IDP ---|provides| ACCOUNT
     AUTH -. requires Account API / HTTPS .-> IDP
-    AUTH ---|requires| FILES
-    STORE ---|provides| FILES
     DATA ---|requires| SQL
     DB ---|provides| SQL

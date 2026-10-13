@@ -5,86 +5,68 @@ classDiagram
     class User {
         <<abstract>>
         +UUID id
-        +string appwriteUserId
         +string email
+        -string passwordHash
         +string fullName
-        +string phone
         +Role role
-        +bool isDisabled
         +datetime createdAt
+        +authenticate(password) bool
         +toPublicProfile() PublicUser
     }
-    note for User "Credentials and sessions are held by Appwrite,<br/>not stored as a password hash."
 
     class Traveler {
         +searchListings(city, filters) StorageListing[]
-        +createBooking(listingId, slot, bags) Booking
+        +createBooking(listingId, slot) Booking
         +presentHandoffCode(bookingId, type) Code
         +rateBooking(bookingId, score, comment) Rating
     }
 
     class StoragePartner {
         +registerBusinessProfile(details) PartnerProfile
-        +manageListing(details) StorageListing
-        +checkIn(code) Booking
-        +confirmDropOff(photos) HandoffRecord
-        +confirmPickup(code, cashCollected) Booking
-        +viewEarnings() EarningsSummary
+        +setAvailability(capacity, hours) void
+        +validateCheckIn(code) Booking
+        +verifyRetrieval(code) Booking
+        +viewEarnings() PayoutSummary
     }
 
     class Administrator {
-        +reviewPartner(partnerId, decision) void
+        +approvePartner(partnerId) void
         +monitorBookings() Booking[]
-        +cancelBooking(bookingId, reason) void
-        +resolveDispute(disputeId, resolution) void
-        +recordFeeSettlement(partnerId, amount) FeeSettlement
-        +disableUser(userId, reason) void
+        +resolveDispute(bookingId, resolution) void
+        +auditPlatformFees() Report
     }
 
     class PartnerProfile {
         +UUID userId
         +string businessName
-        +string businessType
         +string phone
-        +string address
-        +string city
-        +PartnerStatus status
-        +string rejectionReason
-        +datetime reviewedAt
+        +bool isVerified
+        +datetime createdAt
     }
 
     class StorageListing {
         +UUID id
         +UUID partnerId
-        +string name
         +string address
         +string city
-        +double latitude
-        +double longitude
         +int capacity
-        +int hourlyRatePaise
-        +int dailyCapPaise
+        +decimal pricePerHour
         +time openTime
         +time closeTime
-        +int[] openDays
-        +ListingStatus status
-        +computePrice(bags, start, end) int
+        +updateAvailability(delta) void
+        +computePrice(durationHours) decimal
     }
 
     class Booking {
         +UUID id
-        +string code
         +UUID travelerId
         +UUID listingId
-        +int bagCount
         +datetime slotStart
         +datetime slotEnd
+        +string qrOrOtp
         +BookingStatus status
-        +int quotedPaise
-        +int finalPaise
-        +PaymentMethod paymentMethod
-        +int otpFailedAttempts
-        +datetime otpLockedUntil
+        +datetime createdAt
+        +generateHandoffCode() string
         +transitionTo(status) void
     }
 
@@ -92,57 +74,28 @@ classDiagram
         +UUID id
         +UUID bookingId
         +HandoffType type
-        +HandoffMethod method
-        +UUID verifiedBy
-        +int bagCount
-        +string[] photoFileIds
+        +UUID verifiedByUserId
+        +string photoUrl
         +datetime verifiedAt
     }
 
     class Payment {
         +UUID id
         +UUID bookingId
-        +PaymentMethod method
+        +decimal amount
+        +decimal platformFee
+        +decimal partnerPayout
         +PaymentStatus status
-        +int amountPaise
-        +int platformFeePaise
-        +int partnerSharePaise
-        +datetime collectedAt
-        +UUID settlementId
-    }
-
-    class FeeSettlement {
-        +UUID id
-        +UUID partnerId
-        +int amountPaise
-        +int paymentCount
-        +string reference
-        +UUID recordedBy
-    }
-
-    class Dispute {
-        +UUID id
-        +UUID bookingId
-        +UUID raisedBy
-        +string reason
-        +DisputeStatus status
-        +string resolution
-    }
-
-    class AuditLog {
-        +UUID id
-        +UUID actorId
-        +string action
-        +string entity
-        +string entityId
-        +datetime createdAt
+        +string gatewayReference
+        +capture() void
+        +refund() void
+        +settlePayout() void
     }
 
     class Rating {
         +UUID id
         +UUID bookingId
         +UUID travelerId
-        +UUID listingId
         +int score
         +string comment
     }
@@ -164,41 +117,6 @@ classDiagram
         COMPLETED
         CANCELLED
         EXPIRED
-    }
-
-    class PartnerStatus {
-        <<enumeration>>
-        PENDING
-        APPROVED
-        REJECTED
-        SUSPENDED
-    }
-
-    class ListingStatus {
-        <<enumeration>>
-        ACTIVE
-        PAUSED
-        FLAGGED
-    }
-
-    class PaymentMethod {
-        <<enumeration>>
-        COD
-        UPI
-        CARD
-    }
-
-    class HandoffMethod {
-        <<enumeration>>
-        QR
-        OTP
-    }
-
-    class DisputeStatus {
-        <<enumeration>>
-        OPEN
-        RESOLVED
-        REJECTED
     }
 
     class HandoffType {
@@ -223,25 +141,14 @@ classDiagram
 
     StoragePartner "1" *-- "1" PartnerProfile : has
     StoragePartner "1" o-- "0..*" StorageListing : manages
-    Administrator "1" ..> "0..*" StoragePartner : approves
-    Administrator "1" ..> "0..*" StorageListing : flags
+    Administrator "1" ..> "0..*" StorageListing : verifies
     Administrator "1" ..> "0..*" Booking : audits
 
     Traveler "1" --> "0..*" Booking : makes
     StorageListing "1" --> "0..*" Booking : receives
     Booking "1" *-- "1" BookingStatus
-    Booking "1" *-- "0..2" HandoffRecord : logs
+    Booking "1" *-- "1..2" HandoffRecord : logs
     HandoffRecord "1" *-- "1" HandoffType
-    Booking "1" *-- "0..1" Payment : settled by
+    Booking "1" *-- "1" Payment : settled by
     Payment "1" *-- "1" PaymentStatus
     Booking "1" o-- "0..1" Rating : rated by
-    PartnerProfile "1" *-- "1" PartnerStatus
-    StorageListing "1" *-- "1" ListingStatus
-    Booking "1" *-- "1" PaymentMethod
-    Payment "1" *-- "1" PaymentMethod
-    HandoffRecord "1" *-- "1" HandoffMethod
-    Booking "1" o-- "0..*" Dispute : disputed by
-    Dispute "1" *-- "1" DisputeStatus
-    FeeSettlement "0..1" o-- "0..*" Payment : settles
-    StoragePartner "1" --> "0..*" FeeSettlement : owes via
-    Administrator "1" ..> "0..*" AuditLog : reviews

@@ -11,7 +11,7 @@ flowchart LR
     D2[(D2: Storage Listings)]
     D3[(D3: Booking Records)]
 
-    PAY((4.0<br/>Process Payments<br/>COD collection and fee ledger))
+    PAY((4.0<br/>Process Payments))
 
     T -->|Booking request| P31
     P31 -->|Availability query| D2
@@ -21,8 +21,8 @@ flowchart LR
     P32 -->|Booking record| D3
     P32 -->|Availability update| D2
 
-    P32 -->|Payment method and amount| PAY
-    PAY -->|Payment record status| P32
+    P32 -->|Payment details| PAY
+    PAY -->|Payment status| P32
 
     P32 -->|Booking confirmation and verification details| T
     P32 -->|Booking and verification details| P
