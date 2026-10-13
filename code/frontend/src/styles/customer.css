@@ -93,3 +93,12 @@
   .cx-cover { width: 100%; height: 140px; }
   .cx-otp { font-size: 2.2rem; }
 }
+.cx-stars { border: 0; padding: 0; margin: 0 0 .75rem; display: flex; gap: .25rem; }
+.cx-stars legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.cx-stars label { cursor: pointer; font-size: 1.8rem; color: #c9c5d6; }
+.cx-stars input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.cx-stars label:has(input:checked), .cx-stars label:has(~ label input:checked) { color: #f5a623; }
+.cx-stars label:has(input:focus-visible) { outline: 2px solid var(--ink); }
+.cx-dialog textarea, .cx-form textarea { width: 100%; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.cx-profile { display: grid; gap: 1rem; max-width: 560px; }

@@ -106,7 +106,7 @@ const team = [
 function header(): string {
   const me = getMe();
   const accountLink = me
-    ? `<a class="login-link" href="${homeFor(me)}">${escapeHtml(me.fullName.split(' ')[0] || 'Account')}</a><a class="button button-small" href="${homeFor(me)}">Go to dashboard</a>`
+    ? `${me.role === 'traveler' && !me.emailVerified ? '<a class="login-link" href="#/verify-email">Verify your email</a>' : ''}<a class="login-link" href="${homeFor(me)}">${escapeHtml(me.fullName.split(' ')[0] || 'Account')}</a><a class="button button-small" href="${homeFor(me)}">Go to dashboard</a>`
     : `<a class="earn-link" href="#partners">Earn with Potli</a>
       <a class="login-link" href="#/login">Log in</a>
       <a class="button button-small" href="#search">Find storage</a>`;

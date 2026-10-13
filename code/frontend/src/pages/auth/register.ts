@@ -88,8 +88,11 @@ export const registerRoute: RouteDef = {
         await account.deleteSession({ sessionId: 'current' }).catch(() => undefined);
         await account.create({ userId: ID.unique(), email, password: values.password ?? '', name: (values.name ?? '').trim() });
         await account.createEmailPasswordSession({ email, password: values.password ?? '' });
-        // A failed mail send must not strand the user; the verify page offers a resend.
-        await account.createVerification({ url: `${window.location.origin}/?flow=verify` }).catch(() => undefined);
+        // A failed mail send must not strand the user; the verify page says so and offers a resend.
+        let mailFailed = false;
+        await account.createVerification({ url: `${window.location.origin}/?flow=verify` }).catch(() => {
+          mailFailed = true;
+        });
         resetApiToken();
         await refreshMe({ fresh: true });
         const phone = values.phone ? normalizePhone(values.phone) : null;
@@ -97,7 +100,7 @@ export const registerRoute: RouteDef = {
           await api('PATCH', '/me', { body: { phone }, auth: 'required' }).catch(() => undefined);
           await refreshMe();
         }
-        window.location.hash = '#/verify-email';
+        window.location.hash = mailFailed ? '#/verify-email?sendFailed=1' : '#/verify-email';
       } catch (err) {
         setMessage(form, friendlySignUpError(err), 'error');
         setBusy(submit, false);

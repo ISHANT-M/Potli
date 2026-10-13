@@ -16,6 +16,8 @@ export const NAV: NavItem[] = [
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const verifyLink = html`<a class="login-link" href="#/verify-email">Verify your email</a>`;
+
 /** Public pages (search, listing): the site header and a main column. */
 export function publicPage(el: HTMLElement, content: SafeHtml): HTMLElement {
   const me = getMe();
@@ -25,7 +27,7 @@ export function publicPage(el: HTMLElement, content: SafeHtml): HTMLElement {
   mount(
     el,
     html`<header class="site-header"><a class="brand" href="#/" aria-label="Potli home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a>
-    <nav class="header-actions" aria-label="Account">${link}</nav></header>
+    <nav class="header-actions" aria-label="Account">${me && me.role === 'traveler' && !me.emailVerified ? verifyLink : ''}${link}</nav></header>
     <main class="cx-public">${content}</main>`,
   );
   return el.querySelector<HTMLElement>('.cx-public')!;
@@ -78,10 +80,11 @@ export const daysLabel = (days: number[]): string => {
 
 export const hoursLabel = (open: string, close: string): string => `${formatClock(open)} – ${formatClock(close)}`;
 
-/** `<input type=datetime-local>` value for a Date (browser local time). */
+const IST_OFFSET_MS = 330 * 60_000;
+
+/** `<input type=datetime-local>` value for a Date, shown in Asia/Kolkata. */
 export function toLocalInput(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return new Date(date.getTime() + IST_OFFSET_MS).toISOString().slice(0, 16);
 }
 
 /** Now rounded up to the next 30 minutes. */
@@ -97,7 +100,9 @@ export function defaultWindow(): { start: string; end: string } {
 
 export const validDate = (value: string | null | undefined): string | null => {
   if (!value) return null;
-  const parsed = new Date(value);
+  // A datetime-local value has no zone: read it as Asia/Kolkata.
+  const local = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value);
+  const parsed = new Date(local ? `${value.length === 16 ? `${value}:00` : value}+05:30` : value);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 };
 

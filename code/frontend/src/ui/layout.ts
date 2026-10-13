@@ -30,7 +30,7 @@ export function portalShell(options: { nav: NavItem[]; active: string; title: st
       <nav class="portal-nav" aria-label="${options.roleLabel} navigation">
         ${options.nav.map((item) => html`<a href="${item.href}" ${item.href === options.active ? html`aria-current="page"` : ''}>${icon(item.icon)}<span>${item.label}</span></a>`)}
       </nav>
-      <main class="portal-main"><h1 class="portal-title">${options.title}</h1>${options.content}</main>
+      <main class="portal-main">${options.me.role === 'traveler' && !options.me.emailVerified ? html`<div class="alert alert-warning" role="status">Please <a href="#/verify-email">verify your email</a> to book storage.</div>` : ''}<h1 class="portal-title">${options.title}</h1>${options.content}</main>
     </div>
   </div>`;
 }
