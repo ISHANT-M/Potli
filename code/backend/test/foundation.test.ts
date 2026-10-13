@@ -159,8 +159,10 @@ describe('system', () => {
 
   it('mounts the three portal routers without routes', async () => {
     const { anon } = makeApp();
-    for (const path of ['/api/v1/listings', '/api/v1/partner/me', '/api/v1/admin/overview']) {
-      expect((await anon().get(path)).status).toBe(404);
+    // Partner and admin routers now exist and require sign-in; the customer one is still empty.
+    expect((await anon().get('/api/v1/listings')).status).toBe(404);
+    for (const path of ['/api/v1/partner/me', '/api/v1/admin/overview']) {
+      expect((await anon().get(path)).status).toBe(401);
     }
   });
 
