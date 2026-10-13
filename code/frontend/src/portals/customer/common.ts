@@ -93,8 +93,15 @@ export function nextHalfHour(from = new Date()): Date {
   return new Date(Math.ceil((from.getTime() + 1) / step) * step);
 }
 
-export function defaultWindow(): { start: string; end: string } {
-  const start = nextHalfHour();
+/** Four hours from the next half hour; late evenings and early mornings (before 7 am, after 8 pm IST) default to 10:00 the next daytime. */
+export function defaultWindow(from = new Date()): { start: string; end: string } {
+  let start = nextHalfHour(from);
+  const ist = new Date(start.getTime() + IST_OFFSET_MS);
+  const hour = ist.getUTCHours();
+  if (hour >= 20 || hour < 7) {
+    const day = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + (hour >= 20 ? 1 : 0), 10, 0);
+    start = new Date(day - IST_OFFSET_MS);
+  }
   return { start: start.toISOString(), end: new Date(start.getTime() + 4 * 3_600_000).toISOString() };
 }
 

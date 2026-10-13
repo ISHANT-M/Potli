@@ -188,7 +188,7 @@ export const searchRoute: RouteDef = {
         mount(
           results,
           items.length === 0
-            ? html`<div class="card cx-empty"><h2>No storage found${state.q ? ` near ${state.q}` : ''}</h2><p>Try a nearby landmark or widen the time window.</p></div>`
+            ? html`<div class="card cx-empty"><h2>No storage found${state.q ? ` near ${state.q}` : ''}</h2><p>Try a nearby landmark, or change the time window: most places are only open in the daytime.</p></div>`
             : html`<div class="cx-list">${items.map((i) => card(i, link))}</div>`,
         );
         await applyView();

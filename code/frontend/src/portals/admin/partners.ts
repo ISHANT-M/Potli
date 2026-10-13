@@ -99,7 +99,7 @@ export const partnerDetailRoute = adminRoute('/admin/partners/:id', 'Partner', a
         map = L.map(mapEl, { scrollWheelZoom: false });
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
         const points = listings.map((l) => L.latLng(l.latitude, l.longitude));
-        listings.forEach((l, i) => L.circleMarker(points[i]!, { radius: 8, color: '#454078', fillColor: '#ef7f68', fillOpacity: 0.9 }).bindTooltip(l.name).addTo(map!));
+        listings.forEach((l, i) => L.circleMarker(points[i]!, { radius: 8, color: '#1e3a5f', fillColor: '#0f766e', fillOpacity: 0.9 }).bindTooltip(l.name).addTo(map!));
         map.fitBounds(L.latLngBounds(points).pad(0.3), { maxZoom: 15 });
       }
       el.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((button) => button.addEventListener('click', async () => {

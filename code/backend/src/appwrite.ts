@@ -1,4 +1,5 @@
 /** Appwrite access for the API: JWT lookups, server-side sign-in, labels, user status and file storage. */
+import { createHash } from 'node:crypto';
 import type { Role } from '../../db/schema.ts';
 import type { Config } from './config.ts';
 
@@ -79,19 +80,40 @@ export function createAppwriteAdapter(
     });
   }
 
+  // Appwrite sits behind a tunnel (0.2-1 s per call), so a verified token is remembered briefly.
+  // Concurrent lookups for one token share a single request; failures are never cached.
+  // Disabled accounts are still refused at once because that check reads Postgres per request.
+  const JWT_CACHE_MS = 60_000;
+  const JWT_CACHE_MAX = 500;
+  const verified = new Map<string, { account: Promise<AppwriteAccount | null>; expires: number }>();
+
+  async function lookupAccount(jwt: string): Promise<AppwriteAccount | null> {
+    try {
+      const response = await fetch(`${endpoint}/account`, {
+        headers: jsonHeaders({ 'X-Appwrite-JWT': jwt }),
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!response.ok) return null;
+      return await readJson<AppwriteAccount>(response);
+    } catch {
+      return null;
+    }
+  }
+
   return {
     async accountFromJwt(jwt) {
       if (!jwt) return null;
-      try {
-        const response = await fetch(`${endpoint}/account`, {
-          headers: jsonHeaders({ 'X-Appwrite-JWT': jwt }),
-          signal: AbortSignal.timeout(8_000),
-        });
-        if (!response.ok) return null;
-        return await readJson<AppwriteAccount>(response);
-      } catch {
-        return null;
-      }
+      const key = createHash('sha256').update(jwt).digest('hex');
+      const hit = verified.get(key);
+      if (hit && hit.expires > Date.now()) return hit.account;
+
+      const account = lookupAccount(jwt);
+      verified.set(key, { account, expires: Date.now() + JWT_CACHE_MS });
+      if (verified.size > JWT_CACHE_MAX) verified.delete(verified.keys().next().value as string);
+      void account.then((result) => {
+        if (!result && verified.get(key)?.account === account) verified.delete(key);
+      });
+      return account;
     },
 
     /** Appwrite 2.x returns the session secret only in Set-Cookie, so carry it into the JWT request. */

@@ -40,7 +40,12 @@ function parseWsProxy(value: string): { target: string; secure: boolean } | null
   }
 }
 
-export function createDb(connectionString: string): { pool: DbPool; db: Database } {
+export interface CreateDbOptions {
+  /** Supplies the password for each new connection (the catcher's short-lived token). */
+  password?: () => Promise<string>;
+}
+
+export function createDb(connectionString: string, options: CreateDbOptions = {}): { pool: DbPool; db: Database } {
   const proxy = DATABASE_WS_PROXY ? parseWsProxy(DATABASE_WS_PROXY) : null;
 
   if (proxy) {
@@ -50,7 +55,24 @@ export function createDb(connectionString: string): { pool: DbPool; db: Database
     neonConfig.pipelineConnect = false;
     neonConfig.webSocketConstructor = ws as unknown as typeof WebSocket;
 
-    const pool = new NeonPool({ connectionString });
+    // A password provider needs explicit fields: pg lets a connection string override them.
+    const url = new URL(connectionString);
+    const pool = options.password
+      ? new NeonPool({
+          host: url.hostname,
+          port: Number(url.port) || 5432,
+          user: decodeURIComponent(url.username),
+          database: url.pathname.slice(1),
+          password: options.password,
+          idleTimeoutMillis: 60_000, // close before the tunnel drops an idle socket
+        })
+      : new NeonPool({ connectionString });
+    // Unhandled idle-client errors would terminate the process.
+    pool.on('error', (err: Error) => console.error('idle database client error:', err.message));
+    if (options.password) {
+      // A cold reconnect through the tunnel costs ~2 s, so keep one connection warm.
+      setInterval(() => void pool.query('select 1').catch(() => undefined), 40_000).unref();
+    }
     return { pool, db: drizzleNeon(pool, { schema }) as unknown as Database };
   }
 
@@ -106,14 +128,21 @@ export async function mintDatabaseToken(): Promise<string> {
   return body.jwt;
 }
 
-/** Use an Appwrite JWT for WebSocket connections; leave TCP credentials unchanged. */
+/**
+ * Use an Appwrite JWT as the password for WebSocket connections; leave TCP credentials unchanged.
+ * The JWT lasts 15 minutes and the pool opens new connections whenever idle ones close, so the
+ * token is re-minted per connection (reused for 10 minutes), not once at startup.
+ */
 export async function createDbWithToken(
   connectionString: string,
 ): Promise<{ pool: DbPool; db: Database }> {
   if (!DATABASE_WS_PROXY) return createDb(connectionString);
 
-  const token = await mintDatabaseToken();
-  const url = new URL(connectionString);
-  url.password = token;
-  return createDb(url.toString());
+  let cached: { token: string; at: number } | null = null;
+  const currentToken = async (): Promise<string> => {
+    if (!cached || Date.now() - cached.at > 10 * 60_000) cached = { token: await mintDatabaseToken(), at: Date.now() };
+    return cached.token;
+  };
+  await currentToken(); // fail fast at startup when Appwrite is unreachable
+  return createDb(connectionString, { password: currentToken });
 }

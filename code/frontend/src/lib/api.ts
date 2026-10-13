@@ -89,9 +89,11 @@ export function createApiClient(deps: ApiClientDeps) {
       body = JSON.stringify(options.body);
     }
     try {
-      return await fetchFn(buildUrl(path, options.query), { method, headers, body, signal: options.signal });
+      // Give up on a stalled connection instead of leaving the page loading forever (uploads get longer).
+      const signal = options.signal ?? AbortSignal.timeout(options.form ? 60_000 : 20_000);
+      return await fetchFn(buildUrl(path, options.query), { method, headers, body, signal });
     } catch (err) {
-      if ((err as Error).name === 'AbortError') throw err;
+      if ((err as Error).name === 'AbortError' && options.signal) throw err;
       throw new ApiRequestError(0, 'NETWORK', NETWORK_MESSAGE);
     }
   }
