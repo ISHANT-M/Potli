@@ -1,32 +1,22 @@
-/** Traveller routes, owned by the Customer agent. Foundation provides placeholders only. */
+/** Traveller routes, owned by the Customer agent. */
 import type { RouteDef } from '../../lib/router';
-import { html, mount } from '../../lib/html';
-import { messagePage } from '../../ui/layout';
 import { placeholderRoute, type PortalSpec } from '../placeholder';
 import '../../styles/customer.css';
+import { bookingDetailRoute, bookingsRoute, homeRoute } from './bookings';
+import { checkoutRoute } from './checkout';
+import { NAV } from './common';
+import { listingRoute } from './listing';
+import { searchRoute } from './search';
 
-const spec: PortalSpec = {
-  role: 'traveler',
-  roleLabel: 'Traveller',
-  guard: { roles: ['traveler'] },
-  nav: [
-    { label: 'Home', href: '#/app', icon: 'home' },
-    { label: 'Find storage', href: '#/search', icon: 'search' },
-    { label: 'My bookings', href: '#/app/bookings', icon: 'calendar' },
-    { label: 'Profile', href: '#/app/profile', icon: 'user' },
-  ],
-};
-
-const publicStub = (path: string, title: string): RouteDef => ({
-  path,
-  title,
-  mount: (el) => mount(el, messagePage(title, 'This page is being built.', html`<a class="button" href="#/">Back to home</a>`)),
-});
+const spec: PortalSpec = { role: 'traveler', roleLabel: 'Traveller', guard: { roles: ['traveler'] }, nav: NAV };
 
 export const customerRoutes: RouteDef[] = [
-  publicStub('/search', 'Find storage'),
-  publicStub('/listing/:id', 'Storage details'),
-  placeholderRoute(spec, '/app', 'Home', true),
-  placeholderRoute(spec, '/app/bookings', 'My bookings'),
+  searchRoute,
+  listingRoute,
+  checkoutRoute,
+  homeRoute,
+  bookingsRoute,
+  bookingDetailRoute,
+  // Sprint 3: profile
   placeholderRoute(spec, '/app/profile', 'Profile'),
 ];
