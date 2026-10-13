@@ -1,0 +1,55 @@
+/* Shared additions: field errors, alerts, badges, portal shell, message pages. */
+.login-card input[type=tel] { width: 100%; border: 1px solid var(--border); border-radius: 8px; background: white; padding: .9rem; outline: none; }
+.login-card input[type=tel]:focus { border-color: var(--moss); box-shadow: 0 0 0 3px rgba(113,106,163,.12); }
+.form-row-end { justify-content: flex-end; }
+.signup-note a { color: var(--coral-text); font-weight: 700; }
+.login-card label.checkbox { display: flex; align-items: flex-start; gap: .5rem; font-weight: 500; }
+.field-error { color: var(--danger); font-size: .75rem; font-weight: 600; }
+.field-hint { color: var(--muted); font-size: .72rem; font-weight: 500; }
+.form-message[data-tone="error"] { color: var(--danger) !important; }
+.form-message[data-tone="success"] { color: var(--success) !important; }
+input[aria-invalid="true"] { border-color: var(--danger) !important; }
+.button-secondary { background: white; color: var(--primary); border: 1px solid rgba(69,64,120,.35); }
+.button-secondary:hover { background: var(--lilac); }
+.button-danger { background: var(--danger); }
+.button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.alert { padding: .9rem 1rem; border-radius: 8px; border: 1px solid var(--border-card); background: white; font-size: .85rem; }
+.alert-danger { border-color: var(--danger); color: var(--danger); }
+.alert-success { border-color: var(--success); color: var(--success); }
+.alert-warning { border-color: var(--warning); color: var(--warning); }
+.badge { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .72rem; font-weight: 750; background: var(--sand); color: var(--primary); }
+.badge-success { background: #e3f1ea; color: var(--success); }
+.badge-warning { background: #f8ecd6; color: var(--warning); }
+.badge-danger { background: #f8e3e1; color: var(--danger); }
+.badge-info { background: #e9e6f3; color: var(--primary); }
+
+.message-page { min-height: calc(100vh - 78px); display: grid; place-items: center; padding: 3rem 20px; }
+.message-card { max-width: 480px; text-align: center; }
+.message-card h1 { font-size: clamp(2.2rem, 5vw, 3.2rem); }
+.message-card p { color: var(--muted); line-height: 1.6; }
+.message-actions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
+
+.portal-topbar { background: var(--cream); }
+.portal-user { display: flex; align-items: center; gap: .9rem; font-size: .85rem; }
+.portal-role { color: var(--coral-text); font-weight: 800; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; }
+.portal-name { font-weight: 650; }
+.portal-body { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 78px); }
+.portal-nav { background: var(--cream); border-right: 1px solid rgba(41,38,59,.1); padding: 1.25rem .9rem; display: flex; flex-direction: column; gap: .3rem; }
+.portal-nav a { display: flex; align-items: center; gap: .7rem; min-height: 44px; padding: 0 .9rem; border-radius: 9px; font-weight: 650; font-size: .88rem; color: #555168; }
+.portal-nav a:hover { background: var(--lilac); }
+.portal-nav a[aria-current="page"] { background: var(--primary); color: white; }
+.portal-main { padding: 2rem max(4vw, 20px) 4rem; background: var(--cream); }
+.portal-title { font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 1.5rem; }
+.card { background: white; border: 1px solid var(--border-card); border-radius: 10px; padding: 2rem; }
+.card h2 { font-size: 1.8rem; margin-bottom: .6rem; }
+.card p { color: var(--muted); line-height: 1.6; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+
+@media (max-width: 900px) {
+  .portal-body { grid-template-columns: 1fr; }
+  .portal-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; flex-direction: row; overflow-x: auto; border-right: 0; border-top: 1px solid rgba(41,38,59,.12); padding: .4rem; }
+  .portal-nav a { flex-direction: column; justify-content: center; gap: .15rem; min-width: 64px; padding: .3rem .5rem; font-size: .66rem; text-align: center; }
+  .portal-main { padding-bottom: 6rem; }
+  .portal-name, .portal-role { display: none; }
+}
+@media (max-width: 600px) { .message-page { min-height: calc(100vh - 68px); } .card { padding: 1.4rem; } }
