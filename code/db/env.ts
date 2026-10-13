@@ -25,6 +25,9 @@ export const APPWRITE_ENDPOINT = read('APPWRITE_ENDPOINT');
 export const APPWRITE_PROJECT_ID = read('APPWRITE_PROJECT_ID');
 export const APPWRITE_API_KEY = read('APPWRITE_API_KEY');
 
+export const APPWRITE_BUCKET_HANDOFF = read('APPWRITE_BUCKET_HANDOFF') || 'handoff-photos';
+export const APPWRITE_BUCKET_LISTING = read('APPWRITE_BUCKET_LISTING') || 'listing-photos';
+
 export const DEV_SEED_PASSWORD = read('DEV_SEED_PASSWORD') || 'Potli123!';
 
 export const MIGRATIONS_DIR = path.join(here, 'migrations');

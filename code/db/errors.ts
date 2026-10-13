@@ -28,3 +28,28 @@ export function isDatabaseError(err: unknown): boolean {
     ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET'].includes(candidate.code ?? '')
   );
 }
+
+export type DomainErrorCode =
+  | 'NOT_FOUND'
+  | 'CAPACITY_UNAVAILABLE'
+  | 'INVALID_TRANSITION'
+  | 'SLOT_INVALID'
+  | 'OUTSIDE_OPENING_HOURS';
+
+/** A rule violation raised by the domain modules; the API maps it onto the error envelope. */
+export class DomainError extends Error {
+  code: DomainErrorCode;
+
+  constructor(code: DomainErrorCode, message: string) {
+    super(message);
+    this.name = 'DomainError';
+    this.code = code;
+  }
+}
+
+/** True for a unique-constraint violation, optionally on a named constraint. */
+export function isUniqueViolation(err: unknown, constraint?: string): boolean {
+  const candidate = err as { code?: string; constraint?: string } | null;
+  if (candidate?.code !== '23505') return false;
+  return constraint === undefined || candidate.constraint === constraint;
+}

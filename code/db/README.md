@@ -38,6 +38,8 @@ the role label, so nothing depends on outbound mail.
 | abindal1_be24@thapar.edu | Aayush Bindal | traveler | `traveler` |
 | stiwari1_be24@thapar.edu | Satyam Tiwari | storage_partner | `storagePartner` |
 | imehndiratta_be24@thapar.edu | Ishant Mehndiratta | admin | `admin` |
+| pending.partner@potli.dev | Harpreet Kaur | storage_partner (pending) | `storagePartner` |
+| rejected.partner@potli.dev | Manpreet Singh | storage_partner (rejected) | `storagePartner` |
 
 Labels accept alphanumerics only, hence the camelCase mirror of
 `storage_partner`; the Postgres enum keeps the underscore form.
@@ -46,6 +48,15 @@ The seed uses `APPWRITE_API_KEY` to create verified accounts without sending mai
 Re-running it restores `DEV_SEED_PASSWORD` on existing accounts.
 
 ## Schema
+
+Migration `0001_core-domain` adds enums and the tables `listings`, `bookings`,
+`handoff_records`, `payments`, `fee_settlements`, `ratings`, `disputes` and `audit_log`,
+plus new columns on `profiles` (phone, is_disabled) and `partner_profiles` (business type,
+address, city, status, review fields). See `schema.ts`; domain queries are in
+`bookings.ts` (create with capacity lock, atomic transitions, expiry), `audit.ts`,
+`partners.ts` and `profiles.ts`. `npm run bootstrap:appwrite` creates the private Storage
+buckets. The seed also adds a pending and a rejected partner and three Patiala listings.
+
 
 ```
 profiles          id uuid pk, appwrite_user_id text unique, email, full_name,
