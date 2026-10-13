@@ -42,3 +42,8 @@ pnpm-debug.log*
 **/.cache/
 *.tmp
 *.temp
+
+# Agent planning docs (local only, never committed)
+agents/
+CLAUDE.md
+AGENTS.md
