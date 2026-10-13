@@ -43,8 +43,9 @@ function view() {
       <label>Phone number (optional)<input type="tel" name="phone" placeholder="+91 98765 43210" autocomplete="tel" /></label>
       <label>Password<span class="password-field"><input type="password" name="password" autocomplete="new-password" minlength="8" required /><button type="button" class="show-password">Show</button></span><small class="field-hint" id="strength" aria-live="polite"></small></label>
       <label>Confirm password<input type="password" name="confirm" autocomplete="new-password" required /></label>
-      <label class="checkbox terms"><input type="checkbox" name="terms" /> <span>I agree to Potli's terms of use.</span></label>
+      <label class="checkbox terms"><input type="checkbox" name="terms" /> <span>I have read the <a href="#/privacy" target="_blank" rel="noopener">Privacy Policy</a> and agree to Potli's terms of use.</span></label>
       <button class="button login-submit" type="submit">Create account ${icon('arrow')}</button>
+      <p class="field-hint">Verify your email within 15 days. Accounts that are not verified by then are deleted automatically.</p>
       <p class="form-message" role="status" aria-live="polite"></p>
     </form>
     <p class="admin-access-link">Already have an account? <a href="#/login">Log in</a></p>`,

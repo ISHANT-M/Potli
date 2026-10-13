@@ -51,7 +51,7 @@ export const verifyRoute: RouteDef = {
       return;
     }
 
-    mount(el, layout('Check your inbox.', html`<h2>Verify your email</h2><p>We sent a link to <strong>${me.email}</strong>. Open it to finish.</p>
+    mount(el, layout('Check your inbox.', html`<h2>Verify your email</h2><p>We sent a link to <strong>${me.email}</strong>. Open it to finish. If the email isn't verified within 15 days, the account is deleted automatically.</p>
       <button class="button login-submit" type="button" id="resend">Resend email</button>
       <p class="form-message" role="status" aria-live="polite"></p>
       <p class="admin-access-link">Wrong address? <a href="#/register" id="change-email">Sign out and register again</a></p>`));
