@@ -1,7 +1,7 @@
 import { eq } from '../../../db/orm.ts';
 import { describe, expect, it } from 'vitest';
 import { auditLog, disputes, feeSettlements, payments, profiles } from '../../../db/schema.ts';
-import { createAdmin, createBookingFor, createListing, createPartner, createTraveler, makeApp, setBookingStatus } from '../helpers.ts';
+import { createAdmin, createBookingFor, createListing, createPartner, createTraveler, istSlot, makeApp, setBookingStatus } from '../helpers.ts';
 
 const { db, appwrite, authed } = makeApp();
 const ID = '8c1f5a54-3a0f-4f53-8c3d-3d7a9b1d2e11';
@@ -95,7 +95,7 @@ describe('partner ops', () => {
 describe('ledger', () => {
   it('settles all unsettled dues, ignores settled ones, rejects mismatches and double settlement', async () => {
     const w = await world();
-    const second = await createBookingFor(w.traveler.profile.id, w.listing.id, { slotStart: new Date(Date.now() + 5 * 86_400_000), slotEnd: new Date(Date.now() + 5 * 86_400_000 + 3_600_000) });
+    const second = await createBookingFor(w.traveler.profile.id, w.listing.id, { slotStart: istSlot(5, 10, 1).start, slotEnd: istSlot(5, 10, 1).end });
     await capture(w.booking.id, 300);
     await capture(second.id, 200);
     const admin = await createAdmin(appwrite);
