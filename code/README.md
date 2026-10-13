@@ -130,3 +130,49 @@ answer `Y`. Running `node scripts/dev.ts` directly avoids that prompt.
 npm run typecheck   # launcher + frontend + backend + db, all with tsc --noEmit
 npm run build       # type-checks and builds frontend/dist
 ```
+
+### Tests
+
+```bash
+TEST_DB_PORT=54332 npm run test:db:up   # throwaway Postgres for the API tests
+TEST_DB_PORT=54332 npm test             # backend (Vitest + Supertest) and frontend (Vitest)
+npm run test:db:down                    # remove the test database
+```
+
+### End-to-end smoke (Playwright)
+
+The E2E suite drives an already-running app; it does not start servers. Start
+them first, then run it from `code/`:
+
+```bash
+npm run dev                  # terminal 1
+npx playwright install chromium   # once
+npm run e2e                  # terminal 2
+```
+
+`E2E_BASE_URL` sets the frontend origin (default `http://localhost:5173`). It
+covers the landing page, search, traveller login, a Cash-on-pickup booking with
+its 6-digit OTP and cancellation, the admin forbidden page for travellers, and
+the admin overview. Seeded accounts sign in with `DEV_SEED_PASSWORD`, read from
+`backend/.env` at runtime. UPI and card are shown as "coming soon".
+
+### Environment variables (backend/.env)
+
+| Variable | Purpose |
+| --- | --- |
+| `DEV_SEED_PASSWORD` | password given to seeded dev accounts (also used by E2E) |
+| `APPWRITE_BUCKET_HANDOFF` / `APPWRITE_BUCKET_LISTING` | private Storage buckets for handoff and listing photos |
+| `HANDOFF_SECRET` | 32+ random bytes (base64) used to derive drop-off/pickup codes |
+| `CORS_ORIGINS` / `APP_ORIGIN` | allowed browser origins and the public app origin |
+| `TRUST_PROXY` | Express `trust proxy` setting behind a reverse proxy |
+| `NODE_ENV` | `development`, `test` or `production` (production hides error details) |
+
+### API overview (`/api/v1`)
+
+| Area | Endpoints |
+| --- | --- |
+| Public | `GET /health`, `GET /listings`, `GET /listings/:id`, `GET /listings/:id/quote` |
+| Account | `POST /auth/login`, `GET /auth/me`, `PATCH /me`, `GET /files/:fileId` |
+| Traveller | `GET/POST /bookings`, `GET /bookings/:id`, `POST /bookings/:id/cancel`, `/rating`, `/disputes` |
+| Partner | `POST /partners/apply`, `/partner/me`, `/partner/listings`, `/partner/bookings`, `POST /partner/handoffs/lookup`, `/partner/bookings/:id/check-in\|drop-off\|pickup`, `/partner/stats`, `/partner/earnings`, `/partner/settlements` |
+| Admin | `/admin/overview`, `/admin/counts`, `/admin/partners`, `/admin/listings`, `/admin/bookings`, `/admin/users`, `/admin/ledger` (+ `/settlements`), `/admin/disputes`, `/admin/audit` |

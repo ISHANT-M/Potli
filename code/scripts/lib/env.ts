@@ -33,8 +33,11 @@ export function readEnvValue(dir: string, keys: string | string[]): string | nul
 }
 
 
-export function isPlaceholderValue(value: string | null): boolean {
-  return !value || PLACEHOLDER.test(value);
+/** With a WS proxy the URL password is replaced by a minted token, so only an empty or example-host URL is a placeholder. */
+export function isPlaceholderValue(value: string | null, wsProxy?: string | null): boolean {
+  if (!value) return true;
+  if (!wsProxy) return PLACEHOLDER.test(value);
+  return /@db\.example\.com[:/]/.test(value);
 }
 
 /** Report connection configuration with path:line references. */
@@ -52,7 +55,8 @@ export function inspectConnectionEnv(backendDir: string): ConnectionInfo {
   }
   if (found.length === 0) return { state: 'missing-key', file };
 
-  const real = found.find((entry) => !isPlaceholderValue(entry.value));
+  const wsProxy = readEnvValue(backendDir, 'DATABASE_WS_PROXY');
+  const real = found.find((entry) => !isPlaceholderValue(entry.value, wsProxy));
   const primary = real ?? found[0];
   if (!primary) return { state: 'missing-key', file };
   const where = `${file}:${primary.line}`;
