@@ -2,7 +2,7 @@
 import type { Booking, Paginated } from '../../../../shared/types';
 import { STATUS_LABEL } from '../../../../shared/bookingStatus';
 import { formatDateTime, formatINR } from '../../lib/format';
-import { html, mount, type SafeHtml } from '../../lib/html';
+import { html, mount, telHref, type SafeHtml } from '../../lib/html';
 import type { RouteDef } from '../../lib/router';
 import { api, imageUrl } from '../../lib/session';
 import { statusBadge } from '../../ui/components';
@@ -177,7 +177,7 @@ export const bookingDetailRoute: RouteDef = {
           <section class="card"><h2>Details</h2>
             <dl class="cx-dl"><dt>Drop-off</dt><dd>${formatDateTime(b.slotStart)}</dd><dt>Pick-up by</dt><dd>${formatDateTime(b.slotEnd)}</dd><dt>Bags</dt><dd>${b.bagCount}</dd>
               <dt>${b.finalPaise !== null ? 'Final price' : 'Quoted price'}</dt><dd>${formatINR(b.finalPaise ?? b.quotedPaise)}</dd><dt>Payment</dt><dd>Cash on pickup (${b.paymentStatus})</dd></dl>
-            <p><a href="${directionsUrl(b.listing.latitude, b.listing.longitude)}" target="_blank" rel="noopener noreferrer">Get directions</a>${phone ? html` · <a href="tel:${phone}">Call ${b.listing.businessName}</a>` : ''}</p>
+            <p><a href="${directionsUrl(b.listing.latitude, b.listing.longitude)}" target="_blank" rel="noopener noreferrer">Get directions</a>${phone ? html` · <a href="${telHref(phone)}">Call ${b.listing.businessName}</a>` : ''}</p>
             ${b.status === 'booked' || b.status === 'dropped' || b.status === 'stored' ? html`<p class="cx-muted">The final amount may increase if you collect your bags after the end time.</p>` : ''}
             ${b.canCancel ? html`<button class="button button-danger" type="button" id="cancel">Cancel booking</button>` : ''}</section>
           ${ratingCard(b)}
