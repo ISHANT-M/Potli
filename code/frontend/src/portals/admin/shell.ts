@@ -2,6 +2,7 @@
 import type { Me } from '../../../../shared/types';
 import { ApiRequestError } from '../../lib/api';
 import { html, mount, type SafeHtml } from '../../lib/html';
+import { api } from '../../lib/session';
 import type { RouteContext, RouteDef } from '../../lib/router';
 import type { NavItem } from '../../ui/layout';
 import { renderPortal } from '../../ui/layout';
@@ -22,6 +23,26 @@ export const errorText = (err: unknown): string => (err instanceof ApiRequestErr
 
 export function showAdmin(el: HTMLElement, me: Me, active: string, title: string, content: SafeHtml): void {
   renderPortal(el, { nav: ADMIN_NAV, active, title, me, roleLabel: 'Admin', content });
+  void addBadges(el);
+}
+
+/** Pending-partner and open-dispute counts on the nav, refreshed at most every 5 seconds. */
+let counts: { at: number; value: { pendingPartners: number; openDisputes: number } } | null = null;
+async function addBadges(el: HTMLElement): Promise<void> {
+  try {
+    if (!counts || Date.now() - counts.at > 5_000) counts = { at: Date.now(), value: await api('GET', '/admin/counts', { auth: 'required' }) };
+    const { pendingPartners, openDisputes } = counts.value;
+    for (const [href, n] of [['#/admin/partners', pendingPartners], ['#/admin/disputes', openDisputes]] as const) {
+      const link = el.querySelector(`.portal-nav a[href="${href}"]`);
+      if (!link || n <= 0) continue;
+      const tag = document.createElement('span');
+      tag.className = 'nav-badge';
+      tag.textContent = String(n);
+      link.append(tag);
+    }
+  } catch {
+    // counts are a convenience; the nav works without them
+  }
 }
 
 type Mount = (el: HTMLElement, ctx: RouteContext & { me: Me }) => void | (() => void) | Promise<void | (() => void)>;

@@ -10,6 +10,9 @@ import type { AppDeps } from '../app.ts';
 import { authenticate, requireRole } from '../http/auth.ts';
 import { validate, validated } from '../http/validate.ts';
 import { adminBookingRoutes } from './admin/bookings.ts';
+import { adminLedgerRoutes } from './admin/ledger.ts';
+import { adminModerationRoutes } from './admin/moderation.ts';
+import { adminUserRoutes } from './admin/users.ts';
 import { adminPartnerRoutes } from './admin/partners.ts';
 
 const overviewSchemas = { query: z.object({ from: z.coerce.date().optional(), to: z.coerce.date().optional() }) };
@@ -30,6 +33,6 @@ export function adminRouter(deps: AppDeps): Router {
     }
   });
 
-  router.use(adminPartnerRoutes(deps), adminBookingRoutes(deps));
+  router.use(adminPartnerRoutes(deps), adminBookingRoutes(deps), adminLedgerRoutes(deps), adminUserRoutes(deps), adminModerationRoutes(deps));
   return router;
 }

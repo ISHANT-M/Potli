@@ -39,7 +39,7 @@ export const bookingsRoute: RouteDef = {
           <button class="button button-small" type="submit">Filter</button></form>
         ${list.items.length === 0 ? html`<section class="card"><p>No bookings match.</p></section>` : ''}
         <div class="booking-list">${list.items.map(
-          (b) => html`<article class="card booking-row"><div><strong>${b.code}</strong> ${statusBadge(b.status)} ${b.isOverdue ? html`<span class="badge badge-warning">Overdue</span>` : ''}
+          (b) => html`<article class="card booking-row"><div><a href="#/partner/bookings/${b.id}"><strong>${b.code}</strong></a> ${statusBadge(b.status)} ${b.isOverdue ? html`<span class="badge badge-warning">Overdue</span>` : ''}
             <p>${b.traveler.fullName}${b.traveler.phone ? html` | ${b.traveler.phone}` : ''} | ${b.bagCount} ${b.bagCount === 1 ? 'bag' : 'bags'} | ${b.listing.name}</p>
             <p>${formatSlot(b.slotStart, b.slotEnd)}</p></div>
             <div class="booking-money"><span>${formatINR(b.finalPaise ?? b.quotedPaise + b.overstayPaise)}</span>

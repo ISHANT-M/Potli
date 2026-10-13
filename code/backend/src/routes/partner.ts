@@ -8,10 +8,11 @@ import type { AppDeps } from '../app.ts';
 import { applicationRoutes } from './partner/application.ts';
 import { bookingRoutes } from './partner/bookings.ts';
 import { handoffRoutes } from './partner/handoffs.ts';
+import { opsRoutes } from './partner/ops.ts';
 import { listingRoutes } from './partner/listings.ts';
 
 export function partnerRouter(deps: AppDeps): Router {
   const router = Router();
-  router.use(applicationRoutes(deps), listingRoutes(deps), bookingRoutes(deps), handoffRoutes(deps));
+  router.use(applicationRoutes(deps), listingRoutes(deps), bookingRoutes(deps), handoffRoutes(deps), opsRoutes(deps));
   return router;
 }
