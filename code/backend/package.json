@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.ts",
     "dev": "node --watch --watch-path=./src src/server.ts",
+    "cleanup": "node src/cleanupCli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

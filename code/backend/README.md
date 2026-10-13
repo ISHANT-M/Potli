@@ -89,3 +89,24 @@ npm run typecheck
 ```
 
 Also: `PATCH /api/v1/me`, `GET /api/v1/files/:fileId`. Errors use `{ error: { code, message, fields? } }`.
+
+## Daily cleanup
+
+`src/cleanup.ts` removes data we promise not to keep (see the Privacy Policy, `#/privacy`):
+
+| Task | Rule |
+| --- | --- |
+| Luggage photos | Deleted from Appwrite Storage 48 hours after a booking is completed or cancelled; kept while a dispute on it is open |
+| Unverified accounts | Appwrite account and Potli profile deleted 15 days after sign-up if the email was never verified; accounts with any role label or any booking are never touched |
+
+The server checks hourly and runs the cleanup when none has started in the last 24 hours. The claim is a
+`system.cleanup` row in `audit_log` taken under a Postgres advisory lock, so restarts and several servers
+sharing one database run it once a day. Each deletion is audited (`photos.purge`, `account.purge_unverified`).
+
+Run it by hand, or see what it would remove without deleting anything:
+
+```bash
+npm run cleanup -- --dry-run
+npm run cleanup
+```
+

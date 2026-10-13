@@ -45,6 +45,9 @@ export interface FakeAppwrite extends AppwriteAdapter {
   accounts: Map<string, AppwriteAccount>;
   credentials: Map<string, string>;
   files: Map<string, { buffer: Buffer; mime: string }>;
+  /** Unverified accounts the fake reports to the cleanup job (id, creation time, labels). */
+  unverified: { id: string; createdAt: string; labels: string[] }[];
+  deletedUsers: string[];
   calls: {
     setLabels: { userId: string; labels: string[] }[];
     setUserStatus: { userId: string; enabled: boolean }[];
@@ -60,6 +63,8 @@ export function makeFakeAppwrite(): FakeAppwrite {
     accounts: new Map(),
     credentials: new Map(),
     files: new Map(),
+    unverified: [],
+    deletedUsers: [],
     calls: { setLabels: [], setUserStatus: [], uploads: [] },
     reachable: true,
     register(account, password = 'Password123!') {
@@ -93,6 +98,15 @@ export function makeFakeAppwrite(): FakeAppwrite {
     },
     async downloadFile(bucket, fileId) {
       return fake.files.get(`${bucket}/${fileId}`) ?? null;
+    },
+    async deleteFile(bucket, fileId) {
+      fake.files.delete(`${bucket}/${fileId}`);
+    },
+    async listUnverifiedUsers(createdBefore) {
+      return fake.unverified.filter((u) => new Date(u.createdAt) < createdBefore);
+    },
+    async deleteUser(userId) {
+      fake.deletedUsers.push(userId);
     },
   };
   return fake;
