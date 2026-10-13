@@ -83,7 +83,9 @@ export async function mintDatabaseToken(): Promise<string> {
     signal: AbortSignal.timeout(15_000),
   });
   if (!session.ok) {
-    throw new Error(`Appwrite refused the database account (${session.status}): ${await session.text()}`);
+    // Cloudflare answers 530 with an HTML page when the homelab tunnel is down.
+    const detail = session.status === 530 ? 'Appwrite is unreachable (Cloudflare tunnel down)' : (await session.text()).slice(0, 200);
+    throw new Error(`Appwrite refused the database account (${session.status}): ${detail}`);
   }
 
   // Appwrite 2.x returns the session secret only in Set-Cookie.
