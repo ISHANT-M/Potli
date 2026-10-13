@@ -1,0 +1,50 @@
+/* Partner portal: forms, listings, handoff. Uses the shared tokens. */
+.partner-auth-card select, .partner-form select, .partner-form input[type=text], .partner-form input[type=tel], .partner-form input[type=number], .partner-form input[type=time], .partner-form input[type=search], .partner-form input[type=date], .partner-form textarea, .filter-bar input, .filter-bar select, .handoff input[type=text], .handoff input[type=number], .handoff textarea {
+  width: 100%; border: 1px solid var(--border); border-radius: 8px; background: white; padding: .8rem; font: inherit; outline: none;
+}
+.partner-form, .partner-form fieldset { display: grid; gap: 1rem; border: 0; padding: 0; margin: 0; min-width: 0; }
+.partner-form label, .handoff label, .filter-bar label { display: grid; gap: .4rem; font-size: .8rem; font-weight: 700; }
+.partner-form input:focus, .partner-form select:focus, .partner-form textarea:focus, .handoff input:focus { border-color: var(--moss); box-shadow: 0 0 0 3px rgba(113,106,163,.12); }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+.partner-actions { margin-bottom: 1rem; }
+.listing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+.listing-card h2 { font-size: 1.4rem; }
+.listing-card .button { margin-top: .6rem; }
+.pin-map { height: 280px; border-radius: 10px; border: 1px solid var(--border-card); z-index: 0; }
+.map-field { display: grid; gap: .5rem; }
+.label-text { font-size: .8rem; font-weight: 700; }
+.map-pin span { display: block; width: 28px; height: 28px; background: var(--coral); border: 3px solid white; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.day-toggles { display: flex; flex-wrap: wrap; gap: .4rem; }
+.day-toggles .day { display: block; }
+.day-toggles input { position: absolute; opacity: 0; }
+.day-toggles span { display: inline-block; min-width: 48px; padding: .6rem .7rem; text-align: center; border: 1px solid var(--border); border-radius: 8px; background: white; cursor: pointer; }
+.day-toggles input:checked + span { background: var(--primary); color: white; border-color: var(--primary); }
+.day-toggles input:focus-visible + span { outline: 2px solid var(--moss); outline-offset: 2px; }
+.filter-bar { display: flex; flex-wrap: wrap; gap: .8rem; align-items: end; margin-bottom: 1rem; padding: 1rem; }
+.filter-bar label { flex: 1 1 140px; }
+.booking-list { display: grid; gap: .7rem; }
+.booking-row { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem; }
+.booking-row p { margin: .2rem 0 0; font-size: .85rem; }
+.booking-money { text-align: right; display: grid; gap: .15rem; font-weight: 750; white-space: nowrap; }
+.booking-money small { color: var(--muted); font-weight: 500; }
+.pager { margin-top: 1rem; display: flex; gap: 1rem; align-items: center; font-size: .85rem; }
+.handoff { display: grid; gap: 1rem; max-width: 560px; }
+.scan-video { width: 100%; aspect-ratio: 1; object-fit: cover; background: #111; border-radius: 12px; }
+.big-input { font-size: 1.4rem !important; letter-spacing: .08em; text-align: center; padding: 1rem !important; }
+.big-button { width: 100%; min-height: 56px; font-size: 1.05rem; background: var(--coral); }
+.big-button:hover { background: var(--coral-strong); }
+.handoff-card h2 { font-size: 1.7rem; margin-bottom: .3rem; }
+.handoff-card p { margin: .2rem 0; }
+.thumbs { display: flex; flex-wrap: wrap; gap: .6rem; }
+.thumbs figure { margin: 0; display: grid; gap: .3rem; }
+.thumbs img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; background: var(--sand); }
+.amount-label { margin: 0; font-size: .8rem; font-weight: 700; color: var(--muted); }
+.big-amount { font-size: 3rem; font-weight: 800; color: var(--primary) !important; margin: 0; line-height: 1.1; }
+.handoff-done { text-align: center; justify-items: center; }
+.handoff-done h2 { color: var(--success); font-size: 2.4rem; }
+.handoff .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; }
+@media (max-width: 600px) {
+  .two-col { grid-template-columns: 1fr; }
+  .booking-row { flex-direction: column; }
+  .booking-money { text-align: left; }
+}

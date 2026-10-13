@@ -7,6 +7,8 @@ import { escapeHtml, mount } from './lib/html';
 import { focusHeading, leaveRoute, mountRoute, parseHash, sanitizeNext } from './lib/router';
 import { getMe, homeFor, resetApiToken, setMe, signOut } from './lib/session';
 import { forbiddenPage, notFoundPage } from './pages/status';
+import { takeAdminIdleFlag } from './portals/admin/idle';
+import { partnerSignUp } from './portals/partner/signup';
 import { routes } from './routes';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
@@ -173,9 +175,10 @@ function landingPage(): string {
 
 function loginPage(kind: Role = 'traveler'): string {
   const isAdmin = kind === 'admin';
+  if (isAdmin && takeAdminIdleFlag()) authNotice = { route: '#admin-login', text: 'You were signed out after 15 minutes of inactivity.' };
   return `<header class="login-header"><a class="brand" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><a href="#home">Back to home</a></header>
   <main class="login-page"><section class="login-intro"><p class="eyebrow">${isAdmin ? 'Potli administration' : 'Welcome back'}</p><h1>${isAdmin ? 'Keep Potli running smoothly.' : 'Your plans are waiting.'}</h1><p>${isAdmin ? 'Secure access for authorised Potli administrators.' : 'Log in to view bookings, manage a storage location, or pick up where you left off.'}</p><div class="login-quote"><span class="quote-mark quote-open">${icon('quote')}</span><p>Travel is better when the bags aren't deciding the itinerary.</p><span class="quote-mark quote-close">${icon('quote')}</span></div></section>
-  <section class="login-panel"><div class="login-card"><h2>${isAdmin ? 'Admin login' : 'Log in to Potli'}</h2><p>${isAdmin ? 'Enter your administrator credentials.' : 'Enter your details to continue.'}</p><form id="login-form" data-expected-role="${kind}"><label>Email address<input type="email" name="email" placeholder="${isAdmin ? 'admin@potli.com' : 'you@example.com'}" autocomplete="email" required /></label><label>Password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="current-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label><div class="form-row form-row-end"><a href="#forgot-password?role=${kind}">Forgot password?</a></div><button class="button login-submit" type="submit">${isAdmin ? 'Continue securely' : 'Log in'} ${icon('arrow')}</button>${noticeField(isAdmin ? '#admin-login' : '#login')}</form>${isAdmin ? '<p class="admin-access-link"><a href="#login">Return to traveller login</a></p>' : '<p class="signup-note">New to Potli? <a href="#/register">Create an account</a></p><p class="admin-access-link">Potli team member? <a href="#admin-login">Admin login</a></p>'}</div></section></main>`;
+  <section class="login-panel"><div class="login-card"><h2>${isAdmin ? 'Admin login' : 'Log in to Potli'}</h2><p>${isAdmin ? 'Enter your administrator credentials.' : 'Enter your details to continue.'}</p><form id="login-form" data-expected-role="${kind}"><label>Email address<input type="email" name="email" placeholder="${isAdmin ? 'admin@potli.com' : 'you@example.com'}" autocomplete="email" required /></label><label>Password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="current-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label><div class="form-row form-row-end"><a href="#forgot-password?role=${kind}">Forgot password?</a></div><button class="button login-submit" type="submit">${isAdmin ? 'Continue securely' : 'Log in'} ${icon('arrow')}</button>${noticeField(isAdmin ? '#admin-login' : '#login')}</form>${isAdmin ? '<p class="field-hint">For security, admin sessions sign out after 15 minutes of inactivity.</p><p class="admin-access-link"><a href="#login">Return to traveller login</a></p>' : '<p class="signup-note">New to Potli? <a href="#/register">Create an account</a></p><p class="admin-access-link">Potli team member? <a href="#admin-login">Admin login</a></p>'}</div></section></main>`;
 }
 
 function forgotPasswordPage(role: Role): string {
@@ -215,10 +218,14 @@ function partnerPage(): string {
           <div class="signup-fields" data-signup-only>
             <label>Full name<input type="text" name="name" placeholder="Your full name" autocomplete="name" required /></label>
             <label>Business name<input type="text" name="business" placeholder="Shop, hotel or business name" autocomplete="organization" required /></label>
+            <label>Business type<select name="businessType" required><option value="shop">Shop</option><option value="hotel">Hotel</option><option value="cafe">Cafe</option><option value="other">Other</option></select></label>
+            <label>City<input type="text" name="city" placeholder="Patiala" autocomplete="address-level2" required /></label>
           </div>
+          <label data-signup-only>Business address<input type="text" name="address" placeholder="Street, area" autocomplete="street-address" required /></label>
           <label>Email address<input type="email" name="email" placeholder="you@business.com" autocomplete="email" required /></label>
           <label data-signup-only>Phone number<input type="tel" name="phone" placeholder="+91 95803 80494" autocomplete="tel" required /></label>
           <label>Password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label>
+          <div class="form-row form-row-end is-hidden" data-login-only><a href="#forgot-password?role=storage_partner">Forgot password?</a></div>
           <label class="partner-terms" data-signup-only><input type="checkbox" required /><span>I agree to Potli's partner terms and verification process.</span></label>
           <button class="button partner-submit" type="submit">Start earning with Potli ${icon('arrow')}</button>
           ${noticeField('#partner-signup')}
@@ -274,6 +281,7 @@ function wireInteractions(): void {
       field.querySelectorAll<HTMLInputElement>('input').forEach((input) => { input.required = !isLogin; });
       if (field instanceof HTMLInputElement) field.required = !isLogin;
     });
+    document.querySelectorAll<HTMLElement>('[data-login-only]').forEach((field) => field.classList.toggle('is-hidden', !isLogin));
     const title = document.querySelector<HTMLElement>('.partner-form-title');
     const copy = document.querySelector<HTMLElement>('.partner-form-copy');
     const submit = document.querySelector<HTMLButtonElement>('.partner-submit');
@@ -413,8 +421,7 @@ function handlePartnerAuth(event: SubmitEvent): void {
   const isLogin = document.querySelector<HTMLButtonElement>('.auth-tab[data-auth-view="login"]')?.classList.contains('active');
   if (!isLogin) {
     event.preventDefault();
-    const message = form.querySelector<HTMLElement>('.form-message');
-    if (message) message.textContent = 'Partner sign-up is coming soon.';
+    void partnerSignUp(form);
     return;
   }
   void handleLogin(event);

@@ -1,25 +1,22 @@
-/** Admin routes, owned by the Admin agent. The admin login page lives in main.ts; placeholders only here. */
+/** Admin routes, owned by the Admin agent. The admin login page lives in main.ts; unbuilt screens are placeholders. */
 import type { RouteDef } from '../../lib/router';
 import { placeholderRoute, type PortalSpec } from '../placeholder';
 import '../../styles/admin.css';
+import { bookingDetailRoute, bookingsRoute } from './bookings';
+import { overviewRoute } from './overview';
+import { partnerDetailRoute, partnersRoute } from './partners';
+import { ADMIN_NAV } from './shell';
 
-const spec: PortalSpec = {
-  role: 'admin',
-  roleLabel: 'Admin',
-  guard: { roles: ['admin'] },
-  nav: [
-    { label: 'Overview', href: '#/admin', icon: 'dashboard' },
-    { label: 'Partners', href: '#/admin/partners', icon: 'store' },
-    { label: 'Listings', href: '#/admin/listings', icon: 'map' },
-    { label: 'Bookings', href: '#/admin/bookings', icon: 'calendar' },
-    { label: 'Users', href: '#/admin/users', icon: 'user' },
-    { label: 'Ledger', href: '#/admin/ledger', icon: 'rupee' },
-    { label: 'Disputes', href: '#/admin/disputes', icon: 'alert' },
-    { label: 'Audit', href: '#/admin/audit', icon: 'list' },
-  ],
-};
+const spec: PortalSpec = { role: 'admin', roleLabel: 'Admin', guard: { roles: ['admin'] }, nav: ADMIN_NAV };
 
+// Listings, users, ledger, disputes and the audit log arrive in the next sprint.
 export const adminRoutes: RouteDef[] = [
-  placeholderRoute(spec, '/admin', 'Overview', true),
-  ...spec.nav.slice(1).map((item) => placeholderRoute(spec, item.href.slice(1), item.label)),
+  overviewRoute,
+  partnersRoute,
+  partnerDetailRoute,
+  bookingsRoute,
+  bookingDetailRoute,
+  ...['/admin/listings', '/admin/users', '/admin/ledger', '/admin/disputes', '/admin/audit'].map((path, i) =>
+    placeholderRoute(spec, path, ['Listings', 'Users', 'Ledger', 'Disputes', 'Audit log'][i] ?? 'Admin'),
+  ),
 ];

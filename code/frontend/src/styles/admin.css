@@ -1,0 +1,51 @@
+/* Admin console: denser than the other portals, same tokens. */
+.portal-main .range-bar, .portal-main .tabs { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: 1rem; }
+.chip { padding: .45rem .9rem; border-radius: 999px; border: 1px solid var(--border); background: white; font-size: .8rem; font-weight: 700; }
+.chip.on { background: var(--primary); color: white; border-color: var(--primary); }
+.range-custom { display: flex; gap: .4rem; align-items: center; margin-left: auto; }
+.range-custom input, .filter-bar input, .filter-bar select { border: 1px solid var(--border); border-radius: 8px; padding: .55rem .7rem; font: inherit; background: white; }
+.filter-bar { display: flex; flex-wrap: wrap; gap: .7rem; align-items: end; margin-bottom: 1rem; }
+.filter-bar label { display: grid; gap: .3rem; font-size: .75rem; font-weight: 700; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .7rem; margin-bottom: 1rem; }
+.stat { background: white; border: 1px solid var(--border-card); border-radius: 10px; padding: 1rem; display: grid; gap: .25rem; }
+.stat-label { font-size: .72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.stat strong { font-size: 1.7rem; color: var(--primary); }
+.stat small { color: var(--muted); font-size: .72rem; }
+.stat.good { border-color: var(--success); } .stat.good strong { color: var(--success); }
+.stat.bad strong { color: var(--danger); }
+.bars { display: grid; gap: .5rem; margin-top: 1rem; }
+.bar-row { display: grid; grid-template-columns: 120px 1fr 40px; gap: .6rem; align-items: center; font-size: .82rem; }
+.bar { background: var(--sand); border-radius: 6px; height: 14px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--moss); }
+.quick-links { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1rem 0; }
+.table { width: 100%; border-collapse: collapse; background: white; border: 1px solid var(--border-card); border-radius: 10px; font-size: .85rem; }
+.table th { text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: .7rem; border-bottom: 1px solid var(--border-card); }
+.table td { padding: .6rem .7rem; border-bottom: 1px solid var(--border-card); vertical-align: top; }
+.table a { color: var(--primary); font-weight: 700; }
+.table small, .facts small { color: var(--muted); }
+.empty { color: var(--muted); padding: 1rem 0; }
+.pager { margin-top: 1rem; display: flex; gap: 1rem; align-items: center; font-size: .85rem; }
+.card + .card { margin-top: 1rem; }
+.facts { display: grid; grid-template-columns: 140px 1fr; gap: .4rem .8rem; margin: 1rem 0 0; font-size: .88rem; }
+.facts dt { color: var(--muted); font-weight: 700; } .facts dd { margin: 0; }
+.action-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1rem; }
+.mini-map { height: 240px; border-radius: 10px; border: 1px solid var(--border-card); margin: .8rem 0; z-index: 0; }
+.plain { list-style: none; padding: 0; margin: .6rem 0 0; display: grid; gap: .4rem; font-size: .85rem; }
+.timeline { margin: .6rem 0 0; padding-left: 1.2rem; display: grid; gap: .3rem; font-size: .88rem; }
+.thumbs { display: flex; flex-wrap: wrap; gap: .5rem; }
+.thumb { border: 0; padding: 0; background: none; cursor: zoom-in; }
+.thumb img { width: 110px; height: 110px; object-fit: cover; border-radius: 8px; background: var(--sand); }
+.confirm-dialog, .lightbox { border: 0; border-radius: 12px; padding: 1.5rem; max-width: min(92vw, 460px); }
+.confirm-dialog::backdrop, .lightbox::backdrop { background: rgba(41,38,59,.55); }
+.confirm-dialog form { display: grid; gap: 1rem; }
+.confirm-dialog textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: .7rem; font: inherit; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: .6rem; }
+.lightbox { max-width: min(96vw, 900px); } .lightbox img { max-width: 100%; max-height: 80vh; display: block; margin-top: .6rem; }
+@media (max-width: 600px) {
+  .table thead { display: none; }
+  .table, .table tbody, .table tr, .table td { display: block; }
+  .table tr { background: white; border: 1px solid var(--border-card); border-radius: 10px; margin-bottom: .7rem; padding: .4rem; }
+  .table td { border: 0; padding: .3rem .5rem; display: flex; justify-content: space-between; gap: 1rem; text-align: right; }
+  .table td::before { content: attr(data-label); font-weight: 700; color: var(--muted); text-align: left; }
+  .facts { grid-template-columns: 1fr; } .range-custom { margin-left: 0; }
+}
