@@ -4,7 +4,7 @@
 }
 .partner-form, .partner-form fieldset { display: grid; gap: 1rem; border: 0; padding: 0; margin: 0; min-width: 0; }
 .partner-form label, .handoff label, .filter-bar label { display: grid; gap: .4rem; font-size: .8rem; font-weight: 700; }
-.partner-form input:focus, .partner-form select:focus, .partner-form textarea:focus, .handoff input:focus { border-color: var(--moss); box-shadow: 0 0 0 3px rgba(113,106,163,.12); }
+.partner-form input:focus, .partner-form select:focus, .partner-form textarea:focus, .handoff input:focus { border-color: var(--moss); box-shadow: 0 0 0 3px rgba(74,111,165,.12); }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
 .partner-actions { margin-bottom: 1rem; }
 .listing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }

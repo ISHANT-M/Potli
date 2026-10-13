@@ -1,19 +1,19 @@
 /* Design tokens (01-CONVENTIONS section 3). Existing rules in styles.css keep their literal values. */
 :root {
-  --ink: #29263b;
-  --primary: #454078;
-  --primary-hover: #35315f;
-  --moss: #716aa3;
-  --cream: #fbf8f2;
-  --sand: #ece4f1;
-  --lilac: #f0e8f1;
-  --coral: #ef7f68;
-  --coral-strong: #e66f5d;
-  --coral-text: #d76558;
-  --peach: #ffd39f;
-  --muted: #696579;
-  --border: #cfd2ce;
-  --border-card: #e9e5dc;
+  --ink: #14213d;
+  --primary: #1e3a5f;
+  --primary-hover: #152b47;
+  --moss: #4a6fa5;
+  --cream: #f6f8fb;
+  --sand: #e6edf5;
+  --lilac: #eaf0f7;
+  --coral: #0f766e;
+  --coral-strong: #0b5f58;
+  --coral-text: #0f766e;
+  --peach: #f2c879;
+  --muted: #5f6b7a;
+  --border: #cbd5e1;
+  --border-card: #e2e8f0;
   --success: #2f7d5b;
   --warning: #b7791f;
   --danger: #c2413b;

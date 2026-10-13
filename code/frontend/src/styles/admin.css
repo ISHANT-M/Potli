@@ -36,7 +36,7 @@
 .thumb { border: 0; padding: 0; background: none; cursor: zoom-in; }
 .thumb img { width: 110px; height: 110px; object-fit: cover; border-radius: 8px; background: var(--sand); }
 .confirm-dialog, .lightbox { border: 0; border-radius: 12px; padding: 1.5rem; max-width: min(92vw, 460px); }
-.confirm-dialog::backdrop, .lightbox::backdrop { background: rgba(41,38,59,.55); }
+.confirm-dialog::backdrop, .lightbox::backdrop { background: rgba(20,33,61,.55); }
 .confirm-dialog form { display: grid; gap: 1rem; }
 .confirm-dialog textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: .7rem; font: inherit; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: .6rem; }

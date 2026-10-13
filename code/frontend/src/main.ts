@@ -1,25 +1,17 @@
+import '@fontsource-variable/inter';
+import '@fontsource-variable/source-serif-4';
+import '@fontsource-variable/source-serif-4/wght-italic.css';
 import './styles.css';
 import './styles/tokens.css';
 import './styles/portal.css';
-import type { Me } from '../../shared/types';
 import { account, appwriteConfigured, clearRecoveryLink, recoveryLink, verifyLink } from './appwrite';
 import { escapeHtml, mount } from './lib/html';
 import { focusHeading, leaveRoute, mountRoute, parseHash, sanitizeNext } from './lib/router';
-import { getMe, homeFor, resetApiToken, setMe, signOut } from './lib/session';
+import { getMe, homeFor, refreshMe, resetApiToken, setMe, signOut } from './lib/session';
 import { forbiddenPage, notFoundPage } from './pages/status';
 import { takeAdminIdleFlag } from './portals/admin/idle';
 import { partnerSignUp } from './portals/partner/signup';
 import { routes } from './routes';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
-const API_V1 = `${API_BASE}/api/v1`;
-
-interface SessionUser {
-  id: string;
-  email: string;
-  full_name: string;
-  role: Role;
-}
 
 
 type Role = 'traveler' | 'storage_partner' | 'admin';
@@ -57,26 +49,10 @@ function showResetForm(): void {
   else window.location.hash = '#reset-password';
 }
 
+/** Load the signed-in user through the shared API client, so its token is minted once and reused. */
 async function loadProfile(): Promise<CurrentUser | null> {
-  let jwt: string;
-  try {
-    jwt = (await account.createJWT()).jwt;
-  } catch {
-    return null; // no session cookie: signed out
-  }
-
-  const res = await fetch(`${API_V1}/auth/me`, {
-    headers: { Authorization: `Bearer ${jwt}` },
-  });
-  if (!res.ok) {
-    const failure = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
-    if (failure?.error?.code === 'ACCOUNT_DISABLED') throw new Error(failure.error.message ?? 'This account has been disabled.');
-    setMe(null);
-    return null;
-  }
-  const body = (await res.json()) as { user?: SessionUser };
-  setMe((body.user as unknown as Me | undefined) ?? null);
-  return body.user ?? null;
+  const me = await refreshMe();
+  return me as unknown as CurrentUser | null;
 }
 
 type IconName = 'arrow' | 'bag' | 'check' | 'clock' | 'location' | 'logo' | 'quote' | 'shield' | 'store';
@@ -496,6 +472,20 @@ async function init(): Promise<void> {
     return;
   }
 
+  // Public pages draw at once and pick up the signed-in header when the profile arrives; pages that
+  // need the profile (portals, email and recovery links) wait for it.
+  const needsProfile = Boolean(verifyLink || recoveryLink) || /^#\/(app|partner\/|admin(?!\/login)|verify-email)/.test(window.location.hash);
+  if (!needsProfile) {
+    render();
+    void loadProfile()
+      .catch(() => null)
+      .then((me) => {
+        if (me) render();
+      });
+    return;
+  }
+  const app = document.querySelector<HTMLDivElement>('#app');
+  if (app) app.innerHTML = '<main class="boot-loading" role="status" aria-live="polite"><span class="boot-spinner" aria-hidden="true"></span>Loading…</main>';
   try {
     await loadProfile();
   } catch {
