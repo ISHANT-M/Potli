@@ -43,7 +43,7 @@ input[aria-invalid="true"] { border-color: var(--danger) !important; }
 .card { background: white; border: 1px solid var(--border-card); border-radius: 10px; padding: 2rem; }
 .card h2 { font-size: 1.8rem; margin-bottom: .6rem; }
 .card p { color: var(--muted); line-height: 1.6; }
-a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
 
 @media (max-width: 900px) {
   .portal-body { grid-template-columns: 1fr; }

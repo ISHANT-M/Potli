@@ -49,7 +49,7 @@ let authNotice: { route: string; text: string } | null = null;
 
 function noticeField(route: string): string {
   const notice = authNotice?.route === route ? authNotice.text : '';
-  return `<p class="form-message" role="status">${notice}</p>`;
+  return `<p class="form-message" role="status">${escapeHtml(notice)}</p>`;
 }
 
 function showResetForm(): void {

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Me } from '../../../shared/types';
 import { createApiClient, parseErrorBody } from './api';
 import { formatINR, formatDateTime, formatDuration } from './format';
-import { escapeHtml, html, raw } from './html';
+import { escapeHtml, html, raw, telHref } from './html';
 import { evaluateGuard, matchRoute, parseHash, sanitizeNext, type RouteDef } from './router';
 import { validateRegistration } from '../pages/auth/register';
 
@@ -100,5 +100,14 @@ describe('registration validation', () => {
     const errors = validateRegistration({ name: 'A', email: 'nope', phone: '123', password: 'short', confirm: 'other' }, false);
     expect(Object.keys(errors).sort()).toEqual(['confirm', 'email', 'name', 'password', 'phone', 'terms']);
     expect(validateRegistration({ name: 'Asha Rao', email: 'a@b.co', phone: '', password: 'longenough1', confirm: 'longenough1' }, true)).toEqual({});
+  });
+});
+
+describe('telHref', () => {
+  it('accepts plain numbers and rejects script or markup', () => {
+    expect(telHref('+91 98765-43210')).toBe('tel:+919876543210');
+    expect(telHref('javascript:alert(1)')).toBe('#');
+    expect(telHref('1"><script>')).toBe('#');
+    expect(telHref(null)).toBe('#');
   });
 });

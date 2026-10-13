@@ -52,3 +52,9 @@ export function classes(...names: (string | false | null | undefined)[]): string
 export function mount(element: Element, content: SafeHtml): void {
   element.innerHTML = content.value;
 }
+
+/** A `tel:` href for a phone number, or '#' when it holds anything but digits, spaces, + - ( ). */
+export function telHref(phone: unknown): string {
+  const value = String(phone ?? '').trim();
+  return /^\+?[\d\s().-]{3,20}$/.test(value) ? `tel:${value.replace(/[^\d+]/g, '')}` : '#';
+}
