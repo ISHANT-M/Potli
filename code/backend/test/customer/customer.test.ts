@@ -297,3 +297,46 @@ describe('POST /bookings/:id/cancel', () => {
 // Keep unused-import linting honest.
 void listings;
 void profiles;
+
+describe('POST /bookings/:id/rating and /disputes', () => {
+  async function setup(status: Parameters<typeof setBookingStatus>[1]) {
+    const w = await world();
+    const b = await createBookingFor(w.traveler.profile.id, w.listing.id);
+    await setBookingStatus(b.id, status);
+    return { w, b, post: (path: string, body: object, token = w.traveler.token) => w.authed(token).post(`/api/v1/bookings/${b.id}/${path}`).send(body) };
+  }
+
+  it('rates a completed booking once', async () => {
+    const { w, b, post } = await setup('completed');
+    expect((await post('rating', { score: 0 })).status).toBe(400);
+    const ok = await post('rating', { score: 5, comment: 'Great' });
+    expect(ok.status).toBe(201);
+    expect(ok.body.rating).toMatchObject({ score: 5, comment: 'Great' });
+    const again = await post('rating', { score: 4 });
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('ALREADY_RATED');
+    const got = await w.authed(w.traveler.token).get(`/api/v1/bookings/${b.id}`);
+    expect(got.body.booking).toMatchObject({ canRate: false, rating: { score: 5 } });
+  });
+
+  it('rejects rating a non-completed or foreign booking', async () => {
+    const { w, post } = await setup('stored');
+    expect((await post('rating', { score: 5 })).status).toBe(409);
+    const other = await createTraveler(w.appwrite);
+    expect((await post('rating', { score: 5 }, other.token)).status).toBe(404);
+  });
+
+  it('opens one dispute per booking and rejects bad states', async () => {
+    const { w, post } = await setup('stored');
+    expect((await post('disputes', { reason: 'short' })).status).toBe(400);
+    const ok = await post('disputes', { reason: 'My bag was damaged in storage.' });
+    expect(ok.status).toBe(201);
+    expect(ok.body.dispute).toMatchObject({ status: 'open' });
+    const dup = await post('disputes', { reason: 'My bag was damaged in storage.' });
+    expect(dup.status).toBe(409);
+    const other = await createTraveler(w.appwrite);
+    expect((await post('disputes', { reason: 'Not my booking at all.' }, other.token)).status).toBe(404);
+    const fresh = await setup('booked');
+    expect((await fresh.post('disputes', { reason: 'Nothing has happened yet.' })).status).toBe(409);
+  });
+});

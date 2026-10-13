@@ -58,6 +58,8 @@ export const verifyRoute: RouteDef = {
 
     const resend = el.querySelector<HTMLButtonElement>('#resend');
     const message = el.querySelector<HTMLElement>('.form-message');
+    const sendFailed = ctx.query.get('sendFailed') === '1';
+    if (sendFailed && message) message.textContent = "We couldn't send the email. Use Resend.";
     let timer: number | undefined;
     const startCooldown = () => {
       let left = COOLDOWN_SECONDS;
@@ -71,7 +73,7 @@ export const verifyRoute: RouteDef = {
         }
       }, 1000);
     };
-    startCooldown();
+    if (!sendFailed) startCooldown();
     resend?.addEventListener('click', async () => {
       setBusy(resend, true, 'Sending…');
       try {

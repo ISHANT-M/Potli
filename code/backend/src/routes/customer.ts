@@ -15,7 +15,8 @@ import {
   recentRatings,
   type TravelerBookingRow,
 } from '../../../db/queries/customer.ts';
-import { bookings } from '../../../db/schema.ts';
+import { isUniqueViolation } from '../../../db/errors.ts';
+import { bookings, disputes, ratings } from '../../../db/schema.ts';
 import { isWithinOpeningHours, MAX_ADVANCE_DAYS, MAX_BAGS, MAX_DAYS, quote } from '../../../shared/pricing.ts';
 import type { Booking, ListingSummary } from '../../../shared/types.ts';
 import type { AppDeps } from '../app.ts';
@@ -70,6 +71,15 @@ const createSchemas = {
 
 const listBookingsSchemas = { query: z.object({ scope: z.enum(['upcoming', 'past', 'all']).default('all'), page, pageSize }) };
 const cancelSchemas = { ...idParams, body: z.object({ reason: z.string().trim().max(300).optional() }) };
+
+const ratingSchemas = {
+  ...idParams,
+  body: z.object({ score: z.number().int().min(1, 'Choose 1-5 stars.').max(5, 'Choose 1-5 stars.'), comment: z.string().trim().max(500).default('') }),
+};
+const disputeSchemas = {
+  ...idParams,
+  body: z.object({ reason: z.string().trim().min(10, 'Tell us a little more (10+ characters).').max(1000, 'Keep it under 1000 characters.') }),
+};
 
 type SlotProblem = 'SLOT_INVALID' | 'OUTSIDE_OPENING_HOURS';
 
@@ -274,6 +284,52 @@ export function customerRouter(deps: AppDeps): Router {
         ip: req.ip ?? null,
       });
       res.json({ booking: present(await ownBooking(req, params.id), true) });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/bookings/:id/rating', ...traveller, validate(ratingSchemas), async (req, res, next) => {
+    try {
+      const user = currentUser(req);
+      const { params, body } = validated(req, ratingSchemas);
+      const { booking } = await ownBooking(req, params.id);
+      if (booking.status !== 'completed') throw new HttpError(409, 'INVALID_TRANSITION', 'You can rate a booking once it is completed.');
+      try {
+        const [rating] = await db
+          .insert(ratings)
+          .values({ bookingId: booking.id, travelerId: user.id, listingId: booking.listingId, score: body.score, comment: body.comment })
+          .returning({ score: ratings.score, comment: ratings.comment });
+        res.status(201).json({ rating });
+      } catch (err) {
+        if (isUniqueViolation(err) || isUniqueViolation((err as { cause?: unknown }).cause)) throw new HttpError(409, 'ALREADY_RATED', 'You have already rated this booking.');
+        throw err;
+      }
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/bookings/:id/disputes', ...traveller, perUser(10, 60 * 60_000), validate(disputeSchemas), async (req, res, next) => {
+    try {
+      const user = currentUser(req);
+      const { params, body } = validated(req, disputeSchemas);
+      const { booking } = await ownBooking(req, params.id);
+      if (booking.status === 'booked') throw new HttpError(409, 'INVALID_TRANSITION', 'You can report a problem once your bags have been handed over.');
+      if (Date.now() - booking.updatedAt.getTime() > 14 * DAY_MS) {
+        throw new HttpError(409, 'DISPUTE_WINDOW_CLOSED', 'Problems can be reported within 14 days of the last update.');
+      }
+      try {
+        const [dispute] = await db
+          .insert(disputes)
+          .values({ bookingId: booking.id, raisedBy: user.id, raisedByRole: user.role, reason: body.reason })
+          .returning({ id: disputes.id, status: disputes.status, createdAt: disputes.createdAt });
+        await audit(db, { actorId: user.id, actorRole: user.role, action: 'dispute.create', entity: 'booking', entityId: booking.id, ip: req.ip ?? null });
+        res.status(201).json({ dispute });
+      } catch (err) {
+        if (isUniqueViolation(err) || isUniqueViolation((err as { cause?: unknown }).cause)) throw new HttpError(409, 'ALREADY_DISPUTED', 'You already have an open report for this booking.');
+        throw err;
+      }
     } catch (err) {
       next(err);
     }

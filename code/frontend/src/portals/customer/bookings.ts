@@ -104,6 +104,48 @@ function handoffCard(b: Booking): SafeHtml {
     <p class="cx-muted">Tip: turn your screen brightness up so the partner can scan it.</p></section>`;
 }
 
+function ratingCard(b: Booking): SafeHtml {
+  if (b.rating) {
+    return html`<section class="card"><h2>Your rating</h2><p class="cx-rating" aria-label="${b.rating.score} out of 5 stars">${'★'.repeat(b.rating.score)}${'☆'.repeat(5 - b.rating.score)}</p>${b.rating.comment ? html`<p>${b.rating.comment}</p>` : ''}</section>`;
+  }
+  if (!b.canRate) return html``;
+  return html`<section class="card"><h2>Rate your experience</h2>
+    <form id="rate-form"><fieldset class="cx-stars"><legend>Stars</legend>
+      ${[1, 2, 3, 4, 5].map((n) => html`<label><input type="radio" name="score" value="${n}" /><span aria-hidden="true">★</span><span class="sr-only">${n} ${n === 1 ? 'star' : 'stars'}</span></label>`)}</fieldset>
+      <label>Comment (optional)<textarea name="comment" maxlength="500" rows="3"></textarea></label>
+      <button class="button" type="submit">Submit rating</button></form></section>`;
+}
+
+function reportDialog(id: string): void {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'cx-dialog';
+  dialog.innerHTML = html`<form method="dialog"><h2>Report a problem</h2>
+    <label>What went wrong?<textarea name="reason" minlength="10" maxlength="1000" rows="5" required></textarea></label>
+    <p class="form-message" role="alert"></p>
+    <div class="cx-actions"><button class="button button-secondary" value="cancel" formnovalidate>Close</button><button class="button" value="send">Send report</button></div></form>`.value;
+  dialog.addEventListener('close', () => dialog.remove());
+  dialog.querySelector('form')?.addEventListener('submit', async (event) => {
+    const submitter = (event as SubmitEvent).submitter as HTMLButtonElement | null;
+    if (submitter?.value !== 'send') return;
+    event.preventDefault();
+    const reason = dialog.querySelector('textarea')?.value.trim() ?? '';
+    const message = dialog.querySelector<HTMLElement>('.form-message');
+    if (reason.length < 10) {
+      if (message) message.textContent = 'Please tell us a little more (10+ characters).';
+      return;
+    }
+    try {
+      await api('POST', `/bookings/${id}/disputes`, { auth: 'required', body: { reason } });
+      dialog.close();
+      toast('Report sent. Our team will review it.');
+    } catch (err) {
+      if (message) message.textContent = err instanceof Error ? err.message : 'Could not send your report.';
+    }
+  });
+  document.body.append(dialog);
+  dialog.showModal();
+}
+
 export const bookingDetailRoute: RouteDef = {
   path: '/app/bookings/:id',
   title: 'Booking',
@@ -138,6 +180,8 @@ export const bookingDetailRoute: RouteDef = {
             <p><a href="${directionsUrl(b.listing.latitude, b.listing.longitude)}" target="_blank" rel="noopener noreferrer">Get directions</a>${phone ? html` · <a href="tel:${phone}">Call ${b.listing.businessName}</a>` : ''}</p>
             ${b.status === 'booked' || b.status === 'dropped' || b.status === 'stored' ? html`<p class="cx-muted">The final amount may increase if you collect your bags after the end time.</p>` : ''}
             ${b.canCancel ? html`<button class="button button-danger" type="button" id="cancel">Cancel booking</button>` : ''}</section>
+          ${ratingCard(b)}
+          ${b.status !== 'booked' ? html`<p><button class="button button-secondary" type="button" id="report">Report a problem</button></p>` : ''}
           ${b.dropOffPhotoUrls.length ? html`<section class="card"><h2>Photos at drop-off</h2><div class="cx-photos">${b.dropOffPhotoUrls.map((u, i) => html`<button type="button" class="cx-thumb" data-path="${u}" aria-label="Open photo ${i + 1}"></button>`)}</div></section>` : ''}
         </div>`,
       );
@@ -158,6 +202,22 @@ export const bookingDetailRoute: RouteDef = {
           toast(err instanceof Error ? err.message : 'Could not cancel.', 'error');
         }
       });
+      body.querySelector<HTMLFormElement>('#rate-form')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget as HTMLFormElement;
+        const data = new FormData(form);
+        const score = Number(data.get('score'));
+        if (!score) return toast('Choose a star rating.', 'error');
+        try {
+          await api('POST', `/bookings/${id}/rating`, { auth: 'required', body: { score, comment: String(data.get('comment') ?? '') } });
+          toast('Thanks for your rating.');
+        } catch (err) {
+          toast(err instanceof Error ? err.message : 'Could not save your rating.', 'error');
+        }
+        shown = '';
+        void load();
+      });
+      body.querySelector('#report')?.addEventListener('click', () => reportDialog(id));
       body.querySelectorAll<HTMLButtonElement>('.cx-thumb').forEach((button) => {
         void imageUrl(button.dataset.path ?? '')
           .then((src) => {
