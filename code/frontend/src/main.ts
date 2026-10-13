@@ -202,7 +202,7 @@ function partnerPage(): string {
           <label data-signup-only>Phone number<input type="tel" name="phone" placeholder="+91 95803 80494" autocomplete="tel" required /></label>
           <label>Password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label>
           <div class="form-row form-row-end is-hidden" data-login-only><a href="#forgot-password?role=storage_partner">Forgot password?</a></div>
-          <label class="partner-terms" data-signup-only><input type="checkbox" required /><span>I agree to Potli's partner terms and verification process.</span></label>
+          <label class="partner-terms" data-signup-only><input type="checkbox" required /><span>I have read the <a href="#/privacy" target="_blank" rel="noopener">Privacy Policy</a> and agree to Potli's partner terms and verification process.</span></label>
           <button class="button partner-submit" type="submit">Start earning with Potli ${icon('arrow')}</button>
           ${noticeField('#partner-signup')}
         </form>
@@ -212,7 +212,7 @@ function partnerPage(): string {
 }
 
 function footer(): string {
-  return `<footer><a class="brand brand-light" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><p>Travel light. Explore freely.</p><div><a href="#safety">Safety</a><a href="#partners">Partners</a><a href="#team">Team</a></div><small>© ${new Date().getFullYear()} Potli. Student project.</small></footer>`;
+  return `<footer><a class="brand brand-light" href="#home"><span class="brand-mark">${icon('logo')}</span><span>potli</span></a><p>Travel light. Explore freely.</p><div><a href="#safety">Safety</a><a href="#partners">Partners</a><a href="#team">Team</a><a href="#/privacy">Privacy</a></div><small>© ${new Date().getFullYear()} Potli. Student project.</small></footer>`;
 }
 
 function wireInteractions(): void {

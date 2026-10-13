@@ -4,6 +4,7 @@ import { createApp } from './app.ts';
 import { createAppwriteAdapter } from './appwrite.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase } from './db.ts';
+import { startCleanupSchedule } from './cleanup.ts';
 import { startJobs } from './jobs.ts';
 
 async function main(): Promise<void> {
@@ -14,12 +15,14 @@ async function main(): Promise<void> {
   const app = createApp({ db, appwrite, config });
   const server = app.listen(config.port, () => console.log(`Potli backend on http://localhost:${config.port}`));
   const stopJobs = startJobs(db);
+  const stopCleanup = startCleanupSchedule({ db, appwrite, config });
 
   let closing = false;
   const shutdown = (): void => {
     if (closing) return;
     closing = true;
     stopJobs();
+    stopCleanup();
     server.close(() => {
       void pool.end().then(() => process.exit(0));
     });

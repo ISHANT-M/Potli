@@ -24,6 +24,17 @@ export interface AppwriteAdapter {
   /** Store a file in a private bucket and return its file id. */
   uploadFile(bucket: string, buffer: Buffer, filename: string, mime: string): Promise<string>;
   downloadFile(bucket: string, fileId: string): Promise<{ buffer: Buffer; mime: string } | null>;
+  /** Delete a stored file; a file that is already gone counts as deleted. */
+  deleteFile(bucket: string, fileId: string): Promise<void>;
+  /** Accounts that never verified their email and were created before `createdBefore`. */
+  listUnverifiedUsers(createdBefore: Date, limit: number): Promise<UnverifiedUser[]>;
+  deleteUser(userId: string): Promise<void>;
+}
+
+export interface UnverifiedUser {
+  id: string;
+  createdAt: string;
+  labels: string[];
 }
 
 // Appwrite labels are alphanumeric; the database enum uses snake_case.
@@ -179,6 +190,31 @@ export function createAppwriteAdapter(
       if (!response.ok) throw new Error(`Appwrite storage upload failed (${response.status})`);
       const body = await readJson<{ $id: string }>(response);
       return body.$id;
+    },
+
+    async deleteFile(bucket, fileId) {
+      const response = await serverCall('DELETE', `/storage/buckets/${encodeURIComponent(bucket)}/files/${encodeURIComponent(fileId)}`);
+      if (!response.ok && response.status !== 404) throw new Error(`Appwrite storage delete failed (${response.status})`);
+    },
+
+    async listUnverifiedUsers(createdBefore, limit) {
+      const query = (q: Record<string, unknown>) => JSON.stringify(q);
+      const params = new URLSearchParams();
+      params.append('queries[]', query({ method: 'equal', attribute: 'emailVerification', values: [false] }));
+      params.append('queries[]', query({ method: 'lessThan', attribute: '$createdAt', values: [createdBefore.toISOString()] }));
+      params.append('queries[]', query({ method: 'limit', values: [limit] }));
+      const response = await serverCall('GET', `/users?${params.toString()}`);
+      if (!response.ok) throw new Error(`Appwrite could not list users (${response.status})`);
+      const body = await readJson<{ users?: { $id: string; $createdAt: string; labels?: string[]; emailVerification?: boolean }[] }>(response);
+      // Re-check every condition here so a query the server ignored can never widen what gets deleted.
+      return (body.users ?? [])
+        .filter((u) => u.emailVerification === false && new Date(u.$createdAt) < createdBefore)
+        .map((u) => ({ id: u.$id, createdAt: u.$createdAt, labels: u.labels ?? [] }));
+    },
+
+    async deleteUser(userId) {
+      const response = await serverCall('DELETE', `/users/${encodeURIComponent(userId)}`);
+      if (!response.ok && response.status !== 404) throw new Error(`Appwrite could not delete the user (${response.status})`);
     },
 
     async downloadFile(bucket, fileId) {
