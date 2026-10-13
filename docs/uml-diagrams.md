@@ -1,4 +1,4 @@
-# POTLI UML Diagrams (Sequence, Class, Collaboration, Component)
+# POTLI UML Diagrams (Sequence, Class, Collaboration, State, Component)
 
 This document explains the behavioural and structural UML diagrams that
 complement the [use-case diagram](../assets/use-case-diagram.svg), the
@@ -11,16 +11,12 @@ The [component diagram](#component-diagram) describes the current physical imple
 
 ## Implemented vs planned
 
-POTLI is in the **planning and design phase**. The only implemented code is
-the static frontend shell, a versioned auth API (`/api/v1/auth/login`,
-`/api/v1/auth/me`), and a `profiles` / `partner_profiles` schema (see
-`code/`). Everything else shown below — search, booking, QR/OTP handoff,
-payments, payouts, ratings, admin oversight — is the **planned/designed
-system**, grounded in the README capabilities table, the proposal's core
-workflow, and the data flow diagrams' numbered processes (P1–P5, P31–P35)
-and data stores (D1–D4). Every class, message, and state below traces to one
-of those sources; nothing is invented beyond the level of detail needed to
-draw a complete diagram.
+The diagrams describe the implemented system (`code/`): three portals, search,
+cash-on-pickup booking, QR/OTP handoff with drop-off photographs, a 15%
+platform fee ledger, partner approval, ratings, disputes and an audit log.
+**Cash on pickup is the only live payment method.** The Payment Gateway (UPI)
+and the `PendingPayment` state are kept as planned (online payments, coming
+soon). No field pilot or deployment has been done.
 
 ## Conventions
 
@@ -31,32 +27,26 @@ draw a complete diagram.
   in [Data Flow Diagrams](data-flow-diagrams.md), so the same operation can
   be traced across every diagram in the project.
 
-## Sequence diagram — booking and handoff workflow (`assets/sequence-diagram.*`)
+## Sequence diagram - booking and handoff workflow (`assets/sequence-diagram.*`)
 
-Shows the primary designed interaction end to end: a traveler searching for
-storage, logging in, confirming a booking, the drop-off handoff, and the
-pickup and payout settlement. Participants are the Traveler and Storage
-Partner (actors), the Web App (frontend), the Backend API, the Database, and
-the Payment Gateway (UPI) — mirroring the DFD Level 0 external entities and
-the Level 1/2 processes. Every synchronous call is bracketed by an
-activation (execution occurrence) on the receiving lifeline, closed once its
-reply is sent, per standard sequence-diagram notation.
+Shows the primary interaction end to end. Participants are the Traveler and
+Storage Partner (actors), the Web App, the Backend API, the Database, Appwrite
+Auth, Appwrite Storage, and the Payment Gateway, marked as planned (UPI,
+coming soon) with no active calls. Every synchronous call is bracketed by an
+activation on the receiving lifeline.
 
-- **Discovery** (`P2`): the traveler searches and browses storage options
-  before authenticating, matching the implemented public landing/search flow.
-- **Login** (`P1`): the traveler signs in via the implemented
-  `POST /api/v1/auth/login` endpoint before a booking can be created,
-  matching the JWT-based auth already in `code/backend`.
-- **Booking** (`P31`, `P32`): availability validation, payment capture,
-  booking record creation, and QR/OTP generation, authorized with the
-  bearer token from login.
-- **Drop-off handoff** (`P33`, `P34`): the partner scans the check-in
-  code, the API matches it against the booking record, and the drop-off
-  (with photo) is recorded.
-- **Pickup & settlement** (`P35`, `P4`): the partner verifies the retrieval
-  code, the booking is completed, availability is restored, and the
-  partner payout is released through the payment gateway. The traveler is
-  then prompted for a post-pickup rating.
+- **Discovery** (`P2`): the traveler searches by list or map before authenticating.
+- **Login** (`P1`): the web app creates an Appwrite session and JWT, then calls
+  `GET /auth/me`; the backend verifies the JWT with Appwrite and loads the profile.
+- **Booking, cash on pickup** (`P31`, `P32`): the slot, opening hours and quote
+  are validated, the listing is locked, capacity re-checked and the booking
+  created as `Booked`. Nothing is charged at booking.
+- **Drop-off handoff** (`P33`, `P34`): the partner submits the OTP or QR, then
+  uploads photographs, which go to a private Appwrite bucket; the drop-off is recorded.
+- **Pickup and cash collection** (`P35`, `P4`): the partner verifies the pickup
+  code and records cash collected; the final price (including overstay) and the
+  15% platform fee are recorded and the booking is `Completed`. An admin later
+  records the fee settlement. The traveler may then rate the booking.
 
 ## Class diagram — domain model (`assets/class-diagram.*`)
 
@@ -68,27 +58,70 @@ plus the `role` enum on `profiles`) specialised by
 | Relationship | Meaning |
 | --- | --- |
 | `User <|-- Traveler / StoragePartner / Administrator` | Role specialisation (generalisation), matching `profiles.role` |
-| `StoragePartner *-- PartnerProfile` | Business details, matching `partner_profiles` |
+| `StoragePartner *-- PartnerProfile` | Business details and approval status, matching `partner_profiles` |
 | `StoragePartner o-- StorageListing` | A partner manages zero or more listings (D2) |
 | `Traveler --> Booking` | A traveler makes zero or more bookings (D3) |
 | `Booking *-- HandoffRecord` | Drop-off and pickup proof, including the photograph (D3) |
-| `Booking *-- Payment` | Payment, platform fee, and payout (D4) |
+| `Booking *-- Payment` | Payment method, platform fee, partner share and fee settlement (D4) |
+| `FeeSettlement o-- Payment` | Admin-recorded settlement of platform fees owed by a partner |
+| `Booking o-- Dispute` | Disputes raised by travellers or partners |
 | `Booking o-- Rating` | Optional post-pickup rating (README: "Rate the experience") |
 | `Administrator ..> StorageListing / Booking` | Verification and audit, read-only dependency (P5) |
 
-`BookingStatus`, `PaymentStatus`, and `HandoffType` are enumerations that
-back the state diagram below and the DFD's booking status field.
+Attributes match `code/db/schema.ts` (amounts in paise). Credentials are held
+by Appwrite, so `User` has no password hash. `AuditLog` is a minimal class.
+Enumerations (`Role`, `BookingStatus`, `PaymentStatus`, `PaymentMethod`,
+`PartnerStatus`, `ListingStatus`, `HandoffType`, `HandoffMethod`,
+`DisputeStatus`) match the database enum types.
 
-## Collaboration diagram — create booking (`assets/collaboration-diagram.*`)
+## Collaboration diagram - search, login and booking (`assets/collaboration-diagram.*`)
 
-The classic UML communication-diagram view of the same "confirm booking"
-scenario covered by the sequence diagram's first phase, drawn as objects
-(`:Traveler`, `W:WebApp`, `API:BookingService`, `D2:ListingStore`,
-`D3:BookingStore`, `Pay:PaymentGateway`, `:StoragePartner`) linked by
-numbered messages instead of a time axis. Message numbers correspond
-directly to the sequence diagram's steps 1–8 (`1.1`, `1.1.1`, `2.1`… follow
-UML's nested-call numbering), so both diagrams describe one interaction from
-two standard perspectives, as required for a complete behavioural view.
+The communication-diagram view of the first sequence phases, drawn as objects
+(`:Traveler`, `W:WebApp`, `API:BookingService`, `IdP:AppwriteAuth`,
+`D2:ListingStore`, `D3:BookingStore`, `:StoragePartner`, and the planned
+`Pay:PaymentGateway`) linked by numbered messages. Message 1 is search, 2 is
+login (Appwrite session and JWT, then `getMe`), and 3 is the cash-on-pickup
+booking (listing lock and capacity check, booking saved as `Booked`). The
+gateway is shown only through a dashed, planned charge message.
+
+## State diagram - booking lifecycle (`assets/state-diagram.*`)
+
+| State | Entered when | DFD process |
+| --- | --- | --- |
+| `Booked` | Cash-on-pickup booking is validated and created (initial state) | P31, P32 |
+| `PendingPayment` | Online payments, coming soon: initial state until payment is captured | P31 |
+| `Dropped` | Partner verifies the check-in QR/OTP | P33 |
+| `Stored` | Drop-off photo is recorded | P34 |
+| `PickedUp` | Partner verifies the retrieval QR/OTP | P35 |
+| `Completed` | Cash collected and 15% fee recorded | P4 |
+| `Cancelled` | Traveller, partner or admin cancels (admin only from `Dropped`/`Stored`) | - |
+| `Expired` | Slot window elapses with no drop-off | - |
+
+Refunds apply only to future online payments. BFT is measured from search
+start to entry into `Booked`.
+ Booking` | A traveler makes zero or more bookings (D3) |
+| `Booking *-- HandoffRecord` | Drop-off and pickup proof, including the photograph (D3) |
+| `Booking *-- Payment` | Payment method, platform fee, partner share and fee settlement (D4) |
+| `FeeSettlement o-- Payment` | Admin-recorded settlement of platform fees owed by a partner |
+| `Booking o-- Dispute` | Disputes raised by travellers or partners |
+| `Booking o-- Rating` | Optional post-pickup rating (README: "Rate the experience") |
+| `Administrator ..> StorageListing / Booking` | Verification and audit, read-only dependency (P5) |
+
+Attributes match `code/db/schema.ts` (amounts in paise). Credentials are held
+by Appwrite, so `User` has no password hash. `AuditLog` is a minimal class.
+Enumerations (`Role`, `BookingStatus`, `PaymentStatus`, `PaymentMethod`,
+`PartnerStatus`, `ListingStatus`, `HandoffType`, `HandoffMethod`,
+`DisputeStatus`) match the database enum types.
+
+## Collaboration diagram - search, login and booking (`assets/collaboration-diagram.*`)
+
+The communication-diagram view of the first sequence phases, drawn as objects
+(`:Traveler`, `W:WebApp`, `API:BookingService`, `IdP:AppwriteAuth`,
+`D2:ListingStore`, `D3:BookingStore`, `:StoragePartner`, and the planned
+`Pay:PaymentGateway`) linked by numbered messages. Message 1 is search, 2 is
+login (Appwrite session and JWT, then `getMe`), and 3 is the cash-on-pickup
+booking (listing lock and capacity check, booking saved as `Booked`). The
+gateway is shown only through a dashed, planned charge message.
 
 <!--
 ## State diagram — booking lifecycle (`assets/state-diagram.*`)
@@ -125,13 +158,19 @@ Follows **UML Diagrams III**, slides 14-17: physical code components, libraries,
 
 | Component | Implementation |
 | --- | --- |
-| Browser application | `code/frontend`, built by Vite from `src/main.ts` and `src/styles.css`; requires the backend REST API and imports the Appwrite Web SDK |
-| Backend API | `code/backend/src/server.ts`, using Node.js and Express; provides `/api/v1` endpoints and depends on configuration, identity and database access |
-| Appwrite Web SDK | `appwrite` library wrapped by `code/frontend/src/appwrite.ts`; requires Appwrite's Account API for sessions and JWTs |
-| Identity adapter | `code/backend/src/appwrite.ts`; uses Appwrite's Account API for sign-in and JWT verification |
-| Configuration file | `code/backend/src/config.ts`; supplies environment settings |
-| Database workspace | `code/db/client.ts`, `profiles.ts` and `schema.ts`, using Drizzle ORM and `pg`; consumed through `code/backend/src/db.ts` |
-| Appwrite Auth | External identity component providing accounts, sessions, JWTs and credential storage |
-| PostgreSQL | Application database with `profiles` and `partner_profiles`; credentials remain in Appwrite |
+| Browser application | `code/frontend`: traveller, partner and admin portals, Vite bundle, Leaflet map; requires the REST API, imports the Appwrite Web SDK and the shared module |
+| Appwrite Web SDK | Wrapped by `frontend/src/appwrite.ts`; sessions, JWTs, recovery |
+| Backend API | `code/backend/src/app.ts` (Express); provides `/api/v1`, mounts routers, starts the expiry job |
+| HTTP middleware | `backend/src/http`: auth guards, validation, rate limit, upload |
+| Routers | `backend/src/routes`: traveller, partner, admin, files, system |
+| Handoff code service | `backend/src/lib/handoff.ts`: derived OTP, QR payload, attempt lockout |
+| Expiry job | `backend/src/jobs.ts`: expires bookings never dropped off |
+| Shared domain module | `code/shared`: status transitions, pricing and fee, types |
+| Identity adapter | `backend/src/appwrite.ts`: JWT verification and file storage calls |
+| Configuration file | `backend/src/config.ts` |
+| Database workspace | `code/db`: Drizzle ORM, `pg`, migrations |
+| Appwrite Auth | External: accounts, sessions, JWTs, email verification, recovery |
+| Appwrite Storage | External: private `handoff-photos` and `listing-photos` buckets |
+| PostgreSQL | `profiles`, `partner_profiles`, `listings`, `bookings`, `handoff_records`, `payments`, `fee_settlements`, `ratings`, `disputes`, `audit_log` |
 
-This diagram reflects the current working-tree implementation, including Appwrite. Planned booking, handoff and payment modules are not represented as implemented components. `assets/component-diagram.mmd` is the corresponding Mermaid source, with the same components, dependencies and named interfaces. Mermaid represents interfaces as circles with labeled requires/provides links; `assets/component-diagram.svg` retains the lecture's native UML component icons and socket notation. `assets/component-diagram.drawio` provides editable components, connectors and interface symbols in draw.io. `assets/component-diagram.png` is the SVG's rendered export.
+This diagram reflects the current implementation. `assets/component-diagram.mmd` is the corresponding Mermaid source, with the same components, dependencies and named interfaces. Mermaid represents interfaces as circles with labeled requires/provides links; `assets/component-diagram.svg` and `.png` are now rendered from the Mermaid source; `assets/component-diagram.drawio` is stale (it shows the earlier, smaller component set) and has not been updated.

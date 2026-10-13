@@ -5,13 +5,15 @@ sequenceDiagram
     participant W as Web App (Frontend)
     participant API as Backend API
     participant DB as Database
-    participant Pay as Payment Gateway (UPI)
+    participant IdP as Appwrite Auth
+    participant Pay as Payment Gateway (planned: UPI, coming soon)
+    participant Store as Appwrite Storage
     actor P as Storage Partner
 
     Note over T,DB: Discovery (DFD P2)
-    T->>W: Search storage near location
+    T->>W: Search storage (list or map)
     activate W
-    W->>API: GET /listings?city=&near=
+    W->>API: GET /listings?city=
     activate API
     API->>DB: Query available listings (D2)
     activate DB
@@ -25,35 +27,41 @@ sequenceDiagram
     Note over T,DB: Login (DFD P1)
     T->>W: Log in to continue booking
     activate W
-    W->>API: POST /auth/login
+    W->>IdP: Create email session (Appwrite SDK)
+    activate IdP
+    IdP-->>W: Session + JWT
+    deactivate IdP
+    W->>API: GET /auth/me (Bearer JWT)
     activate API
-    API->>DB: Verify credentials (D1)
+    API->>IdP: Verify JWT, identify account
+    activate IdP
+    IdP-->>API: Account identity
+    deactivate IdP
+    API->>DB: Load profile and role (D1)
     activate DB
-    DB-->>API: User record
+    DB-->>API: User profile
     deactivate DB
-    API-->>W: JWT token + user profile
+    API-->>W: User profile + role
     deactivate API
     W-->>T: Logged in
     deactivate W
 
-    Note over T,DB: Booking (DFD P31, P32)
+    Note over T,DB: Booking, cash on pickup (DFD P31, P32)
     T->>W: Select partner, time slot, confirm booking
     activate W
-    W->>API: POST /bookings (Bearer token)
+    W->>API: POST /bookings (Bearer JWT, payment = cash)
     activate API
-    API->>DB: Validate slot against availability & pricing (P31)
+    API->>DB: Validate slot, opening hours and price quote (P31)
     activate DB
     DB-->>API: Availability confirmed
     deactivate DB
-    API->>Pay: Charge booking amount
-    activate Pay
-    Pay-->>API: Payment captured
-    deactivate Pay
-    API->>DB: Create booking record, generate QR/OTP (P32)
+    API->>DB: Lock listing, re-check capacity, create booking as Booked (P32)
     activate DB
     API->>DB: Update listing availability (D2)
     DB-->>API: Booking record saved
     deactivate DB
+    Note right of API: Cash on pickup: nothing is charged at booking.<br/>The OTP and QR are derived from the booking.
+    Note over API,Pay: Planned: online UPI/card capture before Booked (coming soon)
     API-->>W: Booking confirmation + QR/OTP
     deactivate API
     W-->>T: Show booking ID and QR/OTP
@@ -61,7 +69,7 @@ sequenceDiagram
 
     Note over T,P: Drop-off handoff (DFD P33, P34)
     T->>P: Present check-in QR/OTP
-    P->>API: POST /bookings/{id}/verify-checkin
+    P->>API: POST /partner/bookings/{id}/check-in (OTP or QR)
     activate API
     API->>DB: Match handoff details against booking (P33)
     activate DB
@@ -69,8 +77,12 @@ sequenceDiagram
     deactivate DB
     API-->>P: Handoff verified
     deactivate API
-    P->>API: Upload drop-off photo, confirm drop-off
+    P->>API: POST /partner/bookings/{id}/drop-off (photos)
     activate API
+    API->>Store: Save photos in private bucket
+    activate Store
+    Store-->>API: File IDs
+    deactivate Store
     API->>DB: Record drop-off, set status = Stored (P34)
     activate DB
     DB-->>API: Drop-off recorded
@@ -79,23 +91,20 @@ sequenceDiagram
     deactivate API
     API-->>T: Notify: luggage stored
 
-    Note over T,Pay: Pickup & settlement (DFD P35, P4)
+    Note over T,P: Pickup & cash collection (DFD P35, P4)
     T->>P: Present retrieval QR/OTP
-    P->>API: POST /bookings/{id}/verify-pickup
+    P->>API: POST /partner/bookings/{id}/pickup (OTP or QR)
     activate API
     API->>DB: Verify pickup details against booking (P35)
     activate DB
     DB-->>API: Pickup verified
     deactivate DB
-    API->>DB: Mark booking Completed, restore availability
+    API->>DB: Record cash collected, final price (incl. overstay), 15% fee, mark Completed (P4)
     activate DB
-    DB-->>API: Booking updated
+    DB-->>API: Booking and payment updated
     deactivate DB
-    API->>Pay: Release partner payout
-    activate Pay
-    Pay-->>API: Payout settled
-    deactivate Pay
-    API-->>P: Pickup confirmed + payout status
+    Note right of API: Partner keeps the cash, the platform fee<br/>is settled later by an admin (fee_settlements).
+    API-->>P: Pickup confirmed + fee recorded
     deactivate API
     API-->>T: Booking completed, request rating
 
