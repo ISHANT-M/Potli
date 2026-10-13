@@ -7,6 +7,7 @@
   "scripts": {
     "setup": "node scripts/setup.ts",
     "dev": "node scripts/dev.ts",
+    "start": "node scripts/dev.ts",
     "db:setup": "node scripts/setup.ts --only db --with-db",
     "build": "npm --prefix frontend run build",
     "typecheck": "tsc --noEmit && tsc --noEmit -p shared && npm --prefix frontend run typecheck && npm --prefix backend run typecheck && npm --prefix db run typecheck",
