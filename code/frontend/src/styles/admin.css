@@ -49,3 +49,8 @@
   .table td::before { content: attr(data-label); font-weight: 700; color: var(--muted); text-align: left; }
   .facts { grid-template-columns: 1fr; } .range-custom { margin-left: 0; }
 }
+.nav-badge { margin-left: auto; min-width: 1.4rem; padding: .05rem .4rem; border-radius: 999px; background: var(--coral); color: white; font-size: .7rem; font-weight: 750; text-align: center; }
+.tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
+.field-error { color: var(--danger); font-size: .8rem; }
+.confirm-dialog label { display: grid; gap: .4rem; font-size: .8rem; font-weight: 700; }
+.confirm-dialog input, .confirm-dialog select { border: 1px solid var(--border); border-radius: 8px; padding: .6rem; font: inherit; }

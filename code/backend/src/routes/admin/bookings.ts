@@ -1,15 +1,18 @@
 /** Admin booking search and detail (full timeline, handoffs, payment, rating, disputes, audit trail). */
 import { Router } from 'express';
 import { z } from 'zod';
+import { audit } from '../../../../db/audit.ts';
+import { transitionBooking } from '../../../../db/bookings.ts';
 import { and, desc, eq, gte, lt, sql } from '../../../../db/orm.ts';
 import { countBookingRecords, findBookingRecords, travelerAlias, type BookingRecord } from '../../../../db/queries/partner.ts';
 import { auditLog, bookings, disputes, listings, profiles, ratings } from '../../../../db/schema.ts';
 import { BOOKING_STATUSES } from '../../../../shared/bookingStatus.ts';
 import type { AdminBooking, AuditEntry } from '../../../../shared/types.ts';
 import type { AppDeps } from '../../app.ts';
+import { currentUser } from '../../http/auth.ts';
 import { HttpError } from '../../http/errors.ts';
 import { validate, validated } from '../../http/validate.ts';
-import { asNonNull, handoffsOf, idParams, pageWindow, pagingShape, toPartnerBookings } from '../partner/common.ts';
+import { asNonNull, clientIp, handoffsOf, idParams, pageWindow, pagingShape, toPartnerBookings } from '../partner/common.ts';
 
 const listSchemas = {
   query: z.object({
@@ -22,6 +25,7 @@ const listSchemas = {
   }),
 };
 const detailSchemas = { params: idParams };
+const cancelSchemas = { params: idParams, body: z.object({ reason: z.string().trim().min(10, 'Use 10-300 characters.').max(300, 'Use 10-300 characters.') }) };
 
 async function toAdminBookings(deps: AppDeps, records: BookingRecord[]): Promise<AdminBooking[]> {
   const base = await toPartnerBookings(deps.db, records);
@@ -106,6 +110,20 @@ export function adminBookingRoutes(deps: AppDeps): Router {
         disputes: disputeRows.map((d) => ({ id: d.id, raisedByRole: d.raisedByRole, reason: d.reason, status: d.status, resolution: d.resolution, createdAt: d.createdAt.toISOString() })),
         audit: trail,
       });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/admin/bookings/:id/cancel', validate(cancelSchemas), async (req, res, next) => {
+    try {
+      const admin = currentUser(req);
+      const { params, body } = validated(req, cancelSchemas);
+      await db.transaction(async (tx) => {
+        await transitionBooking(tx, { bookingId: params.id, from: ['pending_payment', 'booked', 'dropped', 'stored'], to: 'cancelled', actorId: admin.id, patch: { cancelReason: body.reason } });
+        await audit(tx, { actorId: admin.id, actorRole: 'admin', action: 'booking.cancel', entity: 'booking', entityId: params.id, metadata: { reason: body.reason, by: 'admin' }, ip: clientIp(req) });
+      });
+      res.json({ booking: { id: params.id, status: 'cancelled' } });
     } catch (err) {
       next(err);
     }

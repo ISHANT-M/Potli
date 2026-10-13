@@ -5,7 +5,7 @@ import { formatDateTime, formatINR, formatSlot } from '../../lib/format';
 import { html } from '../../lib/html';
 import { api, imageUrl } from '../../lib/session';
 import { alert, badge, statusBadge } from '../../ui/components';
-import { adminRoute, errorText, showAdmin } from './shell';
+import { adminRoute, confirmDialog, errorText, showAdmin } from './shell';
 
 interface Handoff { type: string; method: string; bagCount: number; note: string; photoUrls: string[]; verifiedAt: string }
 interface Detail {
@@ -70,7 +70,8 @@ export const bookingDetailRoute = adminRoute('/admin/bookings/:id', 'Booking', a
           <dl class="facts"><dt>Slot</dt><dd>${formatSlot(b.slotStart, b.slotEnd)}</dd><dt>Bags</dt><dd>${b.bagCount}</dd><dt>Location</dt><dd>${b.listing.name}, ${b.listing.address}, ${b.listing.city}</dd>
           <dt>Traveller</dt><dd>${b.traveler.fullName}, ${b.traveler.email}${b.traveler.phone ? html`, ${b.traveler.phone}` : ''}</dd>
           <dt>Partner</dt><dd><a href="#/admin/partners/${b.partner.id}">${b.partner.businessName}</a> (${b.partner.fullName})</dd>
-          ${b.cancelReason ? html`<dt>Cancel reason</dt><dd>${b.cancelReason}</dd>` : ''}</dl></section>
+          ${b.cancelReason ? html`<dt>Cancel reason</dt><dd>${b.cancelReason}</dd>` : ''}</dl>
+          <p class="notice" id="notice" role="status"></p>${['pending_payment', 'booked', 'dropped', 'stored'].includes(b.status) ? html`<button class="button button-danger button-small" type="button" id="cancel">Cancel booking</button>` : ''}</section>
         <section class="card"><h2>Timeline</h2><ol class="timeline">${steps.filter(([, at]) => at).map(([label, at]) => html`<li><strong>${label}</strong> ${formatDateTime(at ?? '')}</li>`)}</ol></section>
         <section class="card"><h2>Payment</h2>${d.payment
           ? html`<dl class="facts"><dt>Method</dt><dd>${d.payment.method.toUpperCase()} (cash at counter)</dd><dt>Status</dt><dd>${badge(d.payment.status, d.payment.status === 'captured' ? 'success' : 'neutral')}</dd>
@@ -83,6 +84,17 @@ export const bookingDetailRoute = adminRoute('/admin/bookings/:id', 'Booking', a
           ${d.disputes.map((x) => html`<p>${badge(x.status, x.status === 'open' ? 'warning' : 'neutral')} ${x.raisedByRole}: ${x.reason}${x.resolution ? html`<br><small>Resolution: ${x.resolution}</small>` : ''}</p>`)}</section>
         <section class="card"><h2>Audit trail</h2>${d.audit.length === 0 ? html`<p>No audited actions yet.</p>` : html`<ul class="plain">${d.audit.map((a) => html`<li>${formatDateTime(a.createdAt)} <strong>${a.action}</strong> by ${a.actor ? `${a.actor.fullName} (${a.actor.role})` : 'system'}</li>`)}</ul>`}</section>`,
     );
+    el.querySelector('#cancel')?.addEventListener('click', async () => {
+      const reason = await confirmDialog({ title: 'Cancel this booking?', text: 'The booking is cancelled for everyone and the action is recorded in the audit log.', confirmLabel: 'Cancel booking', reason: true, danger: true });
+      if (!reason) return;
+      try {
+        await api('POST', `/admin/bookings/${b.id}/cancel`, { body: { reason }, auth: 'required' });
+        void bookingDetailRoute.mount(el, ctx);
+      } catch (err) {
+        const notice = el.querySelector<HTMLElement>('#notice');
+        if (notice) notice.textContent = errorText(err);
+      }
+    });
     const thumbs = [...el.querySelectorAll<HTMLButtonElement>('[data-photo]')];
     const dialog = document.createElement('dialog');
     dialog.className = 'lightbox';

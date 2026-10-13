@@ -5,6 +5,7 @@ import type { PartnerListing } from '../../../../shared/types';
 import { quote } from '../../../../shared/pricing';
 import { formatClock, formatINR } from '../../lib/format';
 import { clearFieldErrors, readForm, setBusy, setMessage, showFieldErrors } from '../../lib/forms';
+import { compressImage } from '../../lib/image';
 import { html } from '../../lib/html';
 import type { RouteDef } from '../../lib/router';
 import { api } from '../../lib/session';
@@ -50,6 +51,11 @@ const listRoute: RouteDef = {
     }
   },
 };
+
+function coverCard(l: PartnerListing) {
+  return html`<form class="card partner-form" id="cover-form"><h2>Cover photo</h2>${l.coverUrl ? html`<p class="field-hint">A cover photo is set. Choose a new one to replace it.</p>` : ''}
+    <label>Photo<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" /></label><button class="button button-secondary" type="submit">Upload cover photo</button><p class="form-message" role="status"></p></form>`;
+}
 
 function formView(listing: PartnerListing | null) {
   const l = listing;
@@ -132,11 +138,28 @@ function formRoute(path: string, title: string): RouteDef {
         }
       }
       const suspended = me.partner?.status === 'suspended';
-      showPartner(el, me, '#/partner/listings', listing ? 'Edit listing' : 'New listing', html`<p><a href="#/partner/listings">Back to listings</a></p>${suspended ? alert('warning', 'Your account is suspended, so listings are read-only.') : ''}${formView(listing)}`);
+      showPartner(el, me, '#/partner/listings', listing ? 'Edit listing' : 'New listing', html`<p><a href="#/partner/listings">Back to listings</a></p>${suspended ? alert('warning', 'Your account is suspended, so listings are read-only.') : ''}${formView(listing)}${listing && listing.status !== 'flagged' && !suspended ? coverCard(listing) : ''}`);
       const form = el.querySelector<HTMLFormElement>('#listing-form');
       const mapEl = el.querySelector<HTMLElement>('#pin-map');
       if (!form || !mapEl) return;
       const destroyMap = pinPicker(form, mapEl);
+      const cover = el.querySelector<HTMLFormElement>('#cover-form');
+      cover?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const file = cover.querySelector<HTMLInputElement>('input[type="file"]')?.files?.[0];
+        if (!file || !listing) return setMessage(cover, 'Choose a photo first.', 'error');
+        const submit = cover.querySelector<HTMLButtonElement>('[type="submit"]');
+        setBusy(submit, true, 'Uploading...');
+        try {
+          const data = new FormData();
+          data.append('photo', await compressImage(file), 'cover.jpg');
+          await api('POST', `/partner/listings/${listing.id}/cover`, { form: data, auth: 'required' });
+          setMessage(cover, 'Cover photo saved.', 'success');
+        } catch (err) {
+          setMessage(cover, errorText(err), 'error');
+        }
+        setBusy(submit, false);
+      });
       if (suspended) form.querySelector('fieldset')?.setAttribute('disabled', '');
 
       const preview = form.querySelector<HTMLElement>('#preview');
