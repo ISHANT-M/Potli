@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="660" viewBox="0 0 1700 660" role="img" aria-labelledby="title desc">
+  <title id="title">POTLI Proposed Deployment Diagram</title>
+  <desc id="desc">Proposed user-facing deployment: a user's browser connects over the Internet to a Potli frontend and API host and directly to Appwrite for account sessions. The application host connects to the shared Appwrite host for authentication and database access. The application host is not deployed yet.</desc>
+  <defs>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #222; }
+      .front { fill: #fff; stroke: #444; stroke-width: 2.5; }
+      .side { fill: #f1f1f1; stroke: #444; stroke-width: 2.5; }
+      .heading { font-size: 21px; font-weight: bold; }
+      .body { font-size: 18px; }
+      .edge { fill: none; stroke: #444; stroke-width: 2.5; stroke-linejoin: round; }
+    </style>
+  </defs>
+  <text x="850" y="51" text-anchor="middle" font-size="29" font-weight="bold">POTLI Deployment Diagram</text>
+  <text x="850" y="81" text-anchor="middle" font-size="17">Proposed user-facing topology · Potli frontend and API host not yet deployed</text>
+  <path class="side" d="M40 245 L60 225 H370 L350 245 Z M350 245 L370 225 V535 L350 555 Z"/>
+  <rect class="front" x="40" y="245" width="310" height="310"/>
+  <text class="heading" x="62" y="291">«device» User device</text>
+  <path d="M62 308 H327" stroke="#aaa"/>
+  <text class="body" x="65" y="355">Phone or laptop</text>
+  <text class="body" x="65" y="402">Browser: Potli web app</text>
+  <path class="side" d="M810 245 L830 225 H1160 L1140 245 Z M1140 245 L1160 225 V535 L1140 555 Z"/>
+  <rect class="front" x="810" y="245" width="330" height="310"/>
+  <text class="heading" x="832" y="291">«device» Potli app host</text>
+  <path d="M832 308 H1117" stroke="#aaa"/>
+  <text class="body" x="835" y="355">Static frontend assets</text>
+  <text class="body" x="835" y="402">Node.js / Express API</text>
+  <text class="body" x="835" y="449">Drizzle database client</text>
+  <path class="side" d="M1270 245 L1290 225 H1680 L1660 245 Z M1660 245 L1680 225 V535 L1660 555 Z"/>
+  <rect class="front" x="1270" y="245" width="390" height="310"/>
+  <text class="heading" x="1292" y="291">«device» Shared homelab host</text>
+  <path d="M1292 308 H1637" stroke="#aaa"/>
+  <text class="body" x="1295" y="342" font-weight="bold">Appwrite</text>
+  <text x="1313" y="366" font-size="16">Login, sessions and photo storage</text>
+  <text class="body" x="1295" y="403" font-weight="bold">Database catcher</text>
+  <text x="1313" y="427" font-size="16">Checks infra JWT; relays API SQL</text>
+  <text class="body" x="1295" y="464" font-weight="bold">PostgreSQL</text>
+  <text x="1313" y="489" font-size="16">appwrite DB: Appwrite internals</text>
+  <text x="1313" y="513" font-size="16">potli DB: profiles and bookings</text>
+  <path class="edge" d="M350 484 H472 M645 484 H810 M1140 484 H1270"/>
+  <path class="edge" d="M563 438 V184 H1465 V245"/>
+  <path class="front" d="M498 510 C479 510 463 497 463 478 C463 461 476 448 492 446 C499 423 520 407 543 410 C562 389 596 394 607 419 C630 420 651 439 651 462 C651 483 634 498 616 498 C609 508 594 510 583 510 Z"/>
+  <text x="557" y="467" text-anchor="middle" font-size="21" font-weight="bold">Internet</text>
+  <text x="405" y="474" text-anchor="middle" font-size="16">HTTPS</text>
+  <text x="738" y="474" text-anchor="middle" font-size="16">HTTPS</text>
+  <text x="1215" y="474" text-anchor="middle" font-size="16">HTTPS / WSS</text>
+  <text x="1000" y="173" text-anchor="middle" font-size="16">HTTPS · browser to Appwrite Account API</text>
+</svg>

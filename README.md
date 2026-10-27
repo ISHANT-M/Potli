@@ -112,6 +112,14 @@ The component diagram shows the current physical implementation: the browser app
 </p>
 
 
+## Deployment diagram
+
+The deployment diagram shows a proposed user-facing setup: a user's browser connects through the Internet to a Potli frontend/API host and to Appwrite. The app host would use Appwrite and the database catcher on the existing shared homelab host. The Potli frontend/API host is not deployed yet. See [UML Diagrams](docs/uml-diagrams.md#deployment-diagram) for details.
+
+<p align="center">
+  <img src="assets/deployment-diagram.svg" alt="POTLI deployment diagram showing the developer workstation connected to the shared Appwrite and PostgreSQL host" width="100%">
+</p>
+
 ## Solution architecture
 
 POTLI is planned as a responsive three-tier web application:
@@ -166,7 +174,7 @@ POTLI is under active development. The proposal, system scope, use cases, and de
 - [Use-case diagram](assets/use-case-diagram.svg)
 - [Activity diagram](assets/activity-diagram.svg)
 - [Data flow diagrams](docs/data-flow-diagrams.md)
-- [UML diagrams (sequence, class, collaboration, component)](docs/uml-diagrams.md)
+- [UML diagrams (sequence, class, collaboration, component, deployment)](docs/uml-diagrams.md)
 - [Gantt chart](assets/gantt-chart.svg)
 
 ## Team

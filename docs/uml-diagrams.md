@@ -1,4 +1,4 @@
-# POTLI UML Diagrams (Sequence, Class, Collaboration, Component)
+# POTLI UML Diagrams (Sequence, Class, Collaboration, Component, Deployment)
 
 This document explains the behavioural and structural UML diagrams that
 complement the [use-case diagram](../assets/use-case-diagram.svg), the
@@ -7,7 +7,7 @@ complement the [use-case diagram](../assets/use-case-diagram.svg), the
 **designed system** described in the project `README.md` and
 `project-proposal/main.tex`.
 
-The [component diagram](#component-diagram) describes the current physical implementation separately from the designed workflows below.
+The [component diagram](#component-diagram) describes the current physical implementation; the [deployment diagram](#deployment-diagram) shows a proposed user-facing deployment. Both are separate from the designed workflows below.
 
 ## Implemented vs planned
 
@@ -135,3 +135,11 @@ Follows **UML Diagrams III**, slides 14-17: physical code components, libraries,
 | PostgreSQL | Application database with `profiles` and `partner_profiles`; credentials remain in Appwrite |
 
 This diagram reflects the current working-tree implementation, including Appwrite. Planned booking, handoff and payment modules are not represented as implemented components. `assets/component-diagram.mmd` is the corresponding Mermaid source, with the same components, dependencies and named interfaces. Mermaid represents interfaces as circles with labeled requires/provides links; `assets/component-diagram.svg` retains the lecture's native UML component icons and socket notation. `assets/component-diagram.drawio` provides editable components, connectors and interface symbols in draw.io. `assets/component-diagram.png` is the SVG's rendered export.
+
+## Deployment diagram
+
+Follows **UML Diagrams III**, deployment slides: three-dimensional hardware nodes joined by communication links through the Internet. The software running on each node is listed inside it for context; unlike the component diagram, the connections are between machines, not software components.
+
+This is a **proposed user-facing topology**, not the current development setup. A user's phone or laptop runs the browser. Over the Internet it reaches a proposed Potli application host serving static frontend assets and the Node.js/Express API; the browser also reaches Appwrite's Account API directly over HTTPS for sessions. The application host reaches Appwrite over HTTPS for JWT verification and files, and the database catcher over WSS for PostgreSQL access. The shared homelab host already runs Appwrite, the JWT-gated catcher and one PostgreSQL container holding separate `appwrite` and `potli` databases. **Appwrite** manages logins, sessions, JWTs and uploaded photos. The **database catcher** accepts the API's PostgreSQL-over-WebSocket connection, verifies its separate infrastructure-account JWT with Appwrite, and relays admitted queries to PostgreSQL; it does not store data or admit ordinary Potli users. **PostgreSQL** contains two databases in one server: `appwrite` for Appwrite's internal records, and `potli` for Potli profiles, listings and bookings. The browser never connects directly to PostgreSQL. The Potli frontend and API host is **not deployed yet**; today both run on developers' machines (see [`code/ARCHITECTURE.md`](../code/ARCHITECTURE.md)).
+
+Editable sources are `assets/deployment-diagram.mmd` and `assets/deployment-diagram.drawio`; the matching SVG and PNG are rendered assets. See [`code/ARCHITECTURE.md`](../code/ARCHITECTURE.md) for the deployment boundaries and request paths.

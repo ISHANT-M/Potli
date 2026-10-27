@@ -1,0 +1,10 @@
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#ffffff", "primaryTextColor": "#222222", "primaryBorderColor": "#333333", "lineColor": "#444444", "fontFamily": "Arial"}, "flowchart": {"curve": "linear", "nodeSpacing": 65, "rankSpacing": 90}}}%%
+flowchart LR
+    USER["«device» User device<br/><br/>Phone or laptop<br/>Browser: Potli web app"]
+    INTERNET@{ shape: cloud, label: "Internet" }
+    APP["«device» Potli app host (proposed)<br/><br/>Static frontend assets<br/>Node.js / Express API<br/>Drizzle database client"]
+    HOST["«device» Shared homelab host<br/><br/>Appwrite: login, sessions, photo storage<br/>Catcher: checks infra JWT, relays API SQL<br/>PostgreSQL: appwrite DB (internals)<br/>potli DB (profiles, bookings)"]
+    USER ---|"HTTPS"| INTERNET
+    INTERNET ---|"HTTPS · frontend / API"| APP
+    INTERNET ---|"HTTPS · Appwrite Account API"| HOST
+    APP ---|"HTTPS / WSS"| HOST
