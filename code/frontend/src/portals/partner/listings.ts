@@ -1,6 +1,4 @@
 /** Listings: list, create and edit with a Leaflet pin picker and a live price preview. */
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import type { PartnerListing } from '../../../../shared/types';
 import { quote } from '../../../../shared/pricing';
 import { formatClock, formatINR } from '../../lib/format';
@@ -12,9 +10,9 @@ import { api } from '../../lib/session';
 import { ApiRequestError } from '../../lib/api';
 import { alert, badge } from '../../ui/components';
 import { errorText, showPartner } from './shell';
+import { mountLocationPicker } from './locationPicker';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const INDIA_CENTRE: L.LatLngTuple = [22.9, 79];
 const toPaise = (rupees: string): number => Math.round(Number(rupees) * 100);
 
 const statusBadge = (listing: PartnerListing) =>
@@ -67,14 +65,16 @@ function formView(listing: PartnerListing | null) {
     <fieldset ${lock}>
       <label>Name<input type="text" name="name" maxlength="80" value="${l?.name ?? ''}" required /></label>
       <label>Description<textarea name="description" maxlength="600" rows="3">${l?.description ?? ''}</textarea></label>
-      <label>Address<input type="text" name="address" value="${l?.address ?? ''}" required /></label>
-      <div class="two-col"><label>Area or landmark<input type="text" name="area" value="${l?.area ?? ''}" /></label>
-      <label>City<input type="text" name="city" value="${l?.city ?? ''}" required /></label></div>
-      <div class="map-field"><span class="label-text">Pin the exact location (tap the map or drag the pin)</span>
-        <div id="pin-map" class="pin-map" role="application" aria-label="Map to place the location pin"></div>
-        <button class="button button-secondary button-small" type="button" id="locate">Use my current location</button>
-        <small class="field-hint" id="coords"></small>
+      <div class="map-field"><span class="label-text" id="listing-map-label">Pin the exact location</span>
+        <p class="field-hint">Search for a place, then tap the map, drag the pin or choose the map centre. Check the address we fill below.</p>
+        <div class="map-search"><input type="search" data-location-search placeholder="City, street or landmark" aria-label="Search for the listing location" /><button class="button button-secondary button-small" type="button" data-location-find>Find place</button></div>
+        <div id="pin-map" class="pin-map" role="application" aria-labelledby="listing-map-label"></div>
+        <div class="map-actions"><button class="button button-secondary button-small" type="button" data-location-centre>Pin map centre</button><button class="button button-secondary button-small" type="button" data-location-use>Use my current location</button></div>
+        <p class="field-hint" data-location-status role="status">${l ? 'Move the pin if the location has changed.' : 'Choose a pin to place your listing on the public map.'}</p>
         <input type="hidden" name="latitude" value="${l?.latitude ?? ''}" /><input type="hidden" name="longitude" value="${l?.longitude ?? ''}" /></div>
+      <label>Address<input type="text" name="address" value="${l?.address ?? ''}" maxlength="200" required /></label>
+      <div class="two-col"><label>Area or landmark<input type="text" name="area" value="${l?.area ?? ''}" maxlength="80" /></label>
+      <label>City<input type="text" name="city" value="${l?.city ?? ''}" maxlength="60" required /></label></div>
       <div class="two-col"><label>Capacity (bags)<input type="number" name="capacity" min="1" max="200" step="1" value="${l?.capacity ?? 10}" required /></label>
       <label>Status<select name="status"><option value="active" ${l?.status !== 'paused' ? html`selected` : ''}>Active</option><option value="paused" ${l?.status === 'paused' ? html`selected` : ''}>Paused</option></select></label></div>
       <div class="two-col"><label>Rate per bag per hour (₹)<input type="number" name="hourlyRatePaise" min="10" max="1000" step="1" value="${l ? l.hourlyRatePaise / 100 : 50}" required /></label>
@@ -87,37 +87,6 @@ function formView(listing: PartnerListing | null) {
     ${readOnly ? '' : html`<button class="button" type="submit">${l ? 'Save changes' : 'Create listing'}</button>`}
     <p class="form-message" role="status"></p>
   </form>`;
-}
-
-function pinPicker(form: HTMLFormElement, mapEl: HTMLElement): () => void {
-  const lat = form.elements.namedItem('latitude') as HTMLInputElement;
-  const lng = form.elements.namedItem('longitude') as HTMLInputElement;
-  const coords = form.querySelector<HTMLElement>('#coords');
-  const has = lat.value !== '' && lng.value !== '';
-  const map = L.map(mapEl).setView(has ? [Number(lat.value), Number(lng.value)] : INDIA_CENTRE, has ? 15 : 5);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-  const pin = L.divIcon({ className: 'map-pin', html: '<span></span>', iconSize: [28, 28], iconAnchor: [14, 28] });
-  let marker: L.Marker | null = null;
-  const place = (point: L.LatLng, pan = false): void => {
-    lat.value = point.lat.toFixed(6);
-    lng.value = point.lng.toFixed(6);
-    if (coords) coords.textContent = `Pin at ${lat.value}, ${lng.value}`;
-    if (!marker) {
-      marker = L.marker(point, { draggable: true, icon: pin }).addTo(map);
-      marker.on('dragend', () => place(marker!.getLatLng()));
-    } else marker.setLatLng(point);
-    if (pan) map.setView(point, 16);
-  };
-  if (has) place(L.latLng(Number(lat.value), Number(lng.value)));
-  map.on('click', (e: L.LeafletMouseEvent) => place(e.latlng));
-  form.querySelector('#locate')?.addEventListener('click', () => {
-    navigator.geolocation?.getCurrentPosition(
-      (pos) => place(L.latLng(pos.coords.latitude, pos.coords.longitude), true),
-      () => setMessage(form, 'Location access was denied. Tap the map to place the pin instead.', 'error'),
-      { enableHighAccuracy: true, timeout: 10_000 },
-    );
-  });
-  return () => map.remove();
 }
 
 function formRoute(path: string, title: string): RouteDef {
@@ -142,7 +111,8 @@ function formRoute(path: string, title: string): RouteDef {
       const form = el.querySelector<HTMLFormElement>('#listing-form');
       const mapEl = el.querySelector<HTMLElement>('#pin-map');
       if (!form || !mapEl) return;
-      const destroyMap = pinPicker(form, mapEl);
+      if (suspended) form.querySelector('fieldset')?.setAttribute('disabled', '');
+      const picker = await mountLocationPicker(form, mapEl);
       const cover = el.querySelector<HTMLFormElement>('#cover-form');
       cover?.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -160,7 +130,6 @@ function formRoute(path: string, title: string): RouteDef {
         }
         setBusy(submit, false);
       });
-      if (suspended) form.querySelector('fieldset')?.setAttribute('disabled', '');
 
       const preview = form.querySelector<HTMLElement>('#preview');
       const updatePreview = (): void => {
@@ -197,7 +166,7 @@ function formRoute(path: string, title: string): RouteDef {
           setBusy(submit, false);
         }
       });
-      return destroyMap;
+      return () => picker.destroy();
     },
   };
 }
