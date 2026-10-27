@@ -6,7 +6,7 @@ import '../styles/legal.css';
 
 /** Where privacy requests and complaints are sent. Change it here and the whole page follows. */
 export const PRIVACY_EMAIL = 'privacy@potli.dev';
-const UPDATED = '14 October 2026';
+const UPDATED = '27 October 2026';
 
 interface Section {
   id: string;
@@ -71,7 +71,7 @@ const SECTIONS: Section[] = [
       <li><strong>Appwrite</strong> (self-hosted by the Potli team): accounts, sessions and file storage, including luggage photographs.</li>
       <li><strong>Resend</strong>: delivers the emails Appwrite sends on our behalf, such as email verification and password reset. It receives your email address and the message.</li>
       <li><strong>Cloudflare</strong>: carries network traffic to our servers and may process IP addresses for that purpose.</li>
-      <li><strong>OpenStreetMap</strong>: when you view a map, your browser requests map tiles directly from OpenStreetMap servers, which receive your IP address and the area you are viewing. No cookies are set for this.</li>
+      <li><strong>OpenStreetMap</strong>: when you view a map, your browser requests map tiles directly from OpenStreetMap servers, which receive your IP address and the area you are viewing. If a partner searches for a place or selects a store pin, the browser sends that search or pin coordinates to OpenStreetMap’s Nominatim service to find an address. Map and address lookup requests do not set Potli cookies.</li>
     </ul>
     <p><strong>Legal and safety disclosures.</strong> We may disclose information if required by law, court order or a competent authority, or to protect the rights, safety and property of users and of Potli. We do not otherwise disclose your personal data to third parties.</p>`,
   },
