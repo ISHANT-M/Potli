@@ -295,6 +295,37 @@ The frontend is written in TypeScript, bundled with Vite, and styled with a resp
 
 Sign-in uses Appwrite's Web SDK to establish a session. The frontend then requests a JWT and calls \path{/api/v1/auth/me} for the profile and role. Login pages check that the returned role matches the selected portal; this controls navigation only, and every operation is authorized again on the server. Cash on pickup is the only live payment method; UPI and card are shown as ``coming soon''. Password recovery and email verification use Appwrite, with mail delivered through Resend. The reset page removes the recovery secret from the URL after use.
 
+\subsection{Implementation Screenshots}
+Figures~\ref{fig:screen-login}--\ref{fig:screen-booking} show the running web application, captured in a browser against the local development server. The login screen shows the traveler entry point. The subsequent screens show a search for storage in Patiala, a listing with its location map, and the lifecycle of an existing completed booking from a seeded development account. The booking shown is an existing demonstration record; these screenshots do not represent a field pilot or performance measurement.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth,height=0.78\textheight,keepaspectratio]{screenshots/potli-login.png}
+\caption{Traveler login screen in the running POTLI application}
+\label{fig:screen-login}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.84\textwidth,height=0.79\textheight,keepaspectratio]{screenshots/potli-search-results.png}
+\caption{Storage search results for Patiala with availability and prices}
+\label{fig:screen-search}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.84\textwidth,height=0.79\textheight,keepaspectratio]{screenshots/potli-listing-map.png}
+\caption{Storage listing details and OpenStreetMap location view}
+\label{fig:screen-listing}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\textwidth,height=0.63\textheight,keepaspectratio]{screenshots/potli-booking-lifecycle.png}
+\caption{Completed booking showing verified drop-off and pickup stages}
+\label{fig:screen-booking}
+\end{figure}
+
 \section{Backend API and Middleware}
 The backend runs on Node.js and Express with Helmet, CORS, a 100~KB JSON limit, and a global rate limiter. Routers are mounted under \path{/api/v1}:
 \begin{itemize}[leftmargin=*]
