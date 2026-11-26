@@ -63,7 +63,7 @@
 \addcontentsline{toc}{chapter}{Abstract}
 POTLI is a web application for short-term luggage storage at local shops, hotels, and other businesses. It serves travelers who need to leave their bags between transport connections, accommodation check-in times, or other activities. The system supports finding storage on a list or map, reserving a time slot, and verifying drop-off and pickup through a six-digit one-time password (OTP) or QR code. Storage partners manage listings and capacity, record cash collected at pickup, and owe a 15\% platform fee on each completed booking; administrators approve partners, resolve disputes, and record fee settlements.
 
-This report presents the requirements, system design, implementation, and verification of the system. The implementation uses TypeScript and Vite for three role-specific portals (traveler, storage partner, and administrator), Express for the API, Appwrite for authentication and private file storage, and PostgreSQL with Drizzle ORM for application data. Cash on pickup is the only live payment method; online payments, a field pilot, and deployment remain planned. Automated verification comprises 239 backend API tests, 21 frontend unit tests, and 5 end-to-end smoke flows. The primary evaluation metric is Booking Fulfillment Time (BFT), with a pilot target of a median no greater than three minutes; no BFT measurements have been collected yet.
+This report presents the requirements, system design, implementation, and verification of the system. The implementation uses TypeScript and Vite for three role-specific portals (traveler, storage partner, and administrator), Express for the API, Appwrite for authentication and private file storage, and PostgreSQL with Drizzle ORM for application data. Cash on pickup is the only live payment method; the web application is accessible at \url{https://potli.imxone.com/}. Online payments, a field pilot, and production-readiness work remain planned. Automated verification comprises 239 backend API tests, 21 frontend unit tests, and 5 end-to-end smoke flows. The primary evaluation metric is Booking Fulfillment Time (BFT), with a pilot target of a median no greater than three minutes; no BFT measurements have been collected yet.
 
 \tableofcontents
 \listoffigures
@@ -120,7 +120,8 @@ Partner approval and administration & \implemented & Approval workflow, listing 
 Booking expiry & \implemented & Periodic background job \\
 Online payments (UPI, card) & \planned & Shown as ``coming soon''; \texttt{PendingPayment} reserved \\
 Field pilot and BFT measurement & \planned & No pilot run yet \\
-Production deployment & \planned & Staging and hosting not yet configured \\
+Hosted web application & \implemented & Accessible at \url{https://potli.imxone.com/} \\
+Production hardening & \planned & Review secrets, monitoring, and security before public launch \\
 \bottomrule
 \end{tabular}
 \caption{Implemented and planned project scope}
@@ -352,6 +353,9 @@ Nothing is charged at booking. At pickup the partner records the cash collected;
 \section{Administration}
 Administrators review partner applications (approval is required before a partner can publish listings), flag listings, cancel held bookings, and resolve disputes raised by travelers or partners. Cancelling, approvals, fee settlements, user disabling, and booking expiry write entries to an append-only audit log containing the actor, entity, metadata, and IP address.
 
+\section{Deployment and Access}
+The hosted POTLI web application can be accessed at \url{https://potli.imxone.com/}. The address was verified as serving the traveler-facing home page; it provides a way to inspect the implementation described above. Availability at this URL does not imply that a field pilot or production security assessment has been completed.
+
 \section{Security and Privacy Considerations}
 Controls now implemented are summarized in Table~\ref{tab:security}. Authentication follows established guidance~\cite{owasp-auth}.
 
@@ -562,7 +566,7 @@ A small locality near a railway station or busy market can provide a controlled 
 \section{Summary of Work}
 POTLI now provides a working luggage-storage service in three portals: search on a list or map, capacity-checked booking, OTP and QR handoffs with drop-off photographs, cash collection with a 15\% platform fee ledger, partner approval, ratings, disputes, an audit log, and administrative settlement. The implementation follows the approved design diagrams, with the cash-on-pickup deviations described in Chapter 3, and the system is covered by 239 backend tests, 21 frontend tests, and 5 end-to-end flows.
 
-Online payments, a field pilot, and deployment remain outstanding. The report therefore makes no performance or BFT claims.
+The application is hosted at \url{https://potli.imxone.com/}; online payments, a field pilot, and production-readiness work remain outstanding. The report therefore makes no performance or BFT claims.
 
 \section{Key Findings}
 \begin{itemize}[leftmargin=*]
@@ -570,13 +574,13 @@ Online payments, a field pilot, and deployment remain outstanding. The report th
   \item Availability and booking creation form the central consistency boundary and are updated in one locked transaction to prevent overbooking.
   \item Identity is managed by Appwrite; PostgreSQL stores roles and business records, and shared transition and pricing rules keep frontend and backend consistent.
   \item With cash on pickup, the platform fee becomes a receivable that needs an explicit ledger and settlement process.
-  \item The BFT target is meaningful only once the system is deployed and measured in a pilot.
+  \item The BFT target can only be evaluated once real booking journeys are measured in a field pilot.
 \end{itemize}
 
 \section{Future Work and Recommendations}
 \begin{enumerate}[leftmargin=*]
   \item Integrate a sandbox payment gateway (UPI) and enable \texttt{PendingPayment}, refunds, and automated fee collection.
-  \item Deploy a staging environment with managed secrets and monitoring.
+  \item Review the hosted environment's secret management and monitoring, and complete production-readiness checks.
   \item Add load tests for nearby search and concurrent booking.
   \item Run the proposed pilot and replace target values with measured BFT and handoff success rates.
   \item Define retention periods for photographs and personal data, and complete a pre-launch security review.
@@ -584,7 +588,7 @@ Online payments, a field pilot, and deployment remain outstanding. The report th
 \end{enumerate}
 
 \section{Final Remarks}
-The next milestone is deployment and a pilot with local partners. The existing timestamps and booking states allow BFT and handoff success to be measured directly once real users are involved.
+The next milestone is a field pilot with local partners and production hardening of the hosted service. The existing timestamps and booking states allow BFT and handoff success to be measured directly once real users are involved.
 
 \printbibliography[heading=bibintoc]
 
