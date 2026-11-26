@@ -38,12 +38,12 @@ export const verifyLink = (() => {
   if (recoveryParams.get('flow') !== 'verify') return null;
   const userId = recoveryParams.get('userId');
   const secret = recoveryParams.get('secret');
-  return userId && secret ? { userId, secret } : null;
+  return userId && secret ? { userId, secret, partner: recoveryParams.get('partner') === '1' } : null;
 })();
 
 export function clearVerifyLink(): void {
   if (!verifyLink) return;
   const url = new URL(window.location.href);
-  for (const key of ['flow', 'userId', 'secret']) url.searchParams.delete(key);
+  for (const key of ['flow', 'userId', 'secret', 'partner']) url.searchParams.delete(key);
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
 }

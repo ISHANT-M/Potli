@@ -24,6 +24,7 @@ export const verifyRoute: RouteDef = {
   title: 'Verify your email',
   async mount(el, ctx) {
     const next = sanitizeNext(ctx.query.get('next'));
+    const login = next ? `#/login?next=${encodeURIComponent(next)}` : '#/login';
 
     if (verifyLink) {
       const { userId, secret } = verifyLink;
@@ -32,18 +33,19 @@ export const verifyRoute: RouteDef = {
         clearVerifyLink();
         resetApiToken();
         const me = await refreshMe({ fresh: true }).catch(() => null);
-        const target = me ? (next ?? homeFor(me)) : '#/login';
+        const target = me ? (next ?? homeFor(me)) : login;
         mount(el, layout('Email verified.', html`<h2>You're all set</h2><p>Your email address is confirmed.</p><a class="button login-submit" href="${target}">${me ? 'Continue' : 'Log in'} ${icon('arrow')}</a>`));
       } catch {
         clearVerifyLink();
-        mount(el, layout('That link did not work.', html`<h2>Link expired or already used</h2><p>Log in and ask for a fresh verification email.</p><a class="button login-submit" href="#/login">Log in</a>`));
+        mount(el, layout('That link did not work.', html`<h2>Link expired or already used</h2><p>Log in and ask for a fresh verification email.</p><a class="button login-submit" href="${login}">Log in</a>`));
       }
       return;
     }
 
     const me = getMe();
     if (!me) {
-      window.location.hash = '#/login?next=%23%2Fverify-email';
+      const verify = next ? `#/verify-email?next=${encodeURIComponent(next)}` : '#/verify-email';
+      window.location.hash = `#/login?next=${encodeURIComponent(verify)}`;
       return;
     }
     if (me.emailVerified) {
@@ -77,7 +79,7 @@ export const verifyRoute: RouteDef = {
     resend?.addEventListener('click', async () => {
       setBusy(resend, true, 'Sending…');
       try {
-        await account.createVerification({ url: `${window.location.origin}/?flow=verify` });
+        await account.createVerification({ url: `${window.location.origin}/?flow=verify${next === '#/partner/apply' ? '&partner=1' : ''}` });
         if (message) message.textContent = 'Sent. It can take a minute to arrive; check spam too.';
       } catch {
         if (message) message.textContent = 'We could not send the email right now. Please try again shortly.';

@@ -1,0 +1,3 @@
+ALTER TABLE "partner_profiles" ADD COLUMN "latitude" double precision;--> statement-breakpoint
+ALTER TABLE "partner_profiles" ADD COLUMN "longitude" double precision;--> statement-breakpoint
+ALTER TABLE "partner_profiles" ADD CONSTRAINT "partner_profiles_pin" CHECK (("partner_profiles"."latitude" is null and "partner_profiles"."longitude" is null) or ("partner_profiles"."latitude" is not null and "partner_profiles"."longitude" is not null and "partner_profiles"."latitude" between 6 and 37 and "partner_profiles"."longitude" between 68 and 98));

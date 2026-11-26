@@ -11,12 +11,13 @@ export interface MapPoint {
 export async function showMap(
   container: HTMLElement,
   points: MapPoint[],
-  options: { interactive?: boolean; onSelect?: (id: string) => void } = {},
+  options: { interactive?: boolean; onSelect?: (id: string) => void; onUnavailable: () => void; isCurrent?: () => boolean },
 ): Promise<() => void> {
-  const [{ default: L }] = await Promise.all([import('leaflet'), import('leaflet/dist/leaflet.css')]);
+  const [{ default: L }, { addBasemap }] = await Promise.all([import('leaflet'), import('../../lib/basemap'), import('leaflet/dist/leaflet.css')]);
+  if (!container.isConnected || container.hidden || options.isCurrent?.() === false) return () => {};
   const interactive = options.interactive ?? true;
   const map = L.map(container, { zoomControl: interactive, dragging: interactive, scrollWheelZoom: false, doubleClickZoom: interactive, touchZoom: interactive, keyboard: interactive });
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(map);
+  map.setMaxZoom(19);
   const bounds = L.latLngBounds([]);
   for (const point of points) {
     const marker = L.marker([point.lat, point.lng], {
@@ -30,5 +31,6 @@ export async function showMap(
   if (points.length === 1) map.setView([points[0]!.lat, points[0]!.lng], 15);
   else if (points.length > 1) map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
   else map.setView([22.5, 79], 4);
+  addBasemap(map, options.onUnavailable);
   return () => map.remove();
 }

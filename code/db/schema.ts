@@ -75,6 +75,8 @@ export const partnerProfiles = pgTable(
     businessType: text('business_type').notNull().default(''),
     address: text('address').notNull().default(''),
     city: text('city').notNull().default(''),
+    latitude: doublePrecision('latitude'),
+    longitude: doublePrecision('longitude'),
     status: partnerStatus('status').notNull().default('pending'),
     rejectionReason: text('rejection_reason'),
     reviewedBy: uuid('reviewed_by').references(() => profiles.id),
@@ -83,7 +85,10 @@ export const partnerProfiles = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (table) => [index('idx_partner_profiles_status').on(table.status)],
+  (table) => [
+    index('idx_partner_profiles_status').on(table.status),
+    check('partner_profiles_pin', sql`(${table.latitude} is null and ${table.longitude} is null) or (${table.latitude} is not null and ${table.longitude} is not null and ${table.latitude} between 6 and 37 and ${table.longitude} between 68 and 98)`),
+  ],
 );
 
 export const listings = pgTable(

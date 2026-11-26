@@ -61,6 +61,30 @@ describe('POST /partners/apply', () => {
     expect(audits.map((a) => a.action)).toEqual(['partner.apply']);
   });
 
+  it('keeps the signup pin private until an approved partner publishes a listing', async () => {
+    const user = await createTraveler(appwrite);
+    const as = authed(user.token);
+    const pin = { latitude: 24.5854, longitude: 73.7125 };
+    const applied = await as.post('/api/v1/partners/apply').send({ ...body, ...pin });
+    expect(applied.status).toBe(201);
+    expect(applied.body.user.partner).toMatchObject({ status: 'pending', ...pin });
+    expect((await as.get('/api/v1/partner/me')).body.user.partner).toMatchObject(pin);
+    const search = () => authed().get('/api/v1/listings').query({ q: body.city });
+    expect((await search()).body.items).toEqual([]);
+    await db.update(partnerProfiles).set({ status: 'approved' }).where(eq(partnerProfiles.userId, user.profile.id));
+    expect((await search()).body.items).toEqual([]);
+    const published = await as.post('/api/v1/partner/listings').send({ ...listingBody, ...pin, city: body.city, address: body.address });
+    expect(published.status).toBe(201);
+    expect((await search()).body.items).toEqual([expect.objectContaining({ id: published.body.listing.id, ...pin })]);
+  });
+
+  it.each([{ latitude: 24.58 }, { longitude: 73.71 }, { latitude: 50, longitude: 73.71 }])('rejects an invalid or incomplete pin: %j', async (pin) => {
+    const user = await createTraveler(appwrite);
+    const result = await authed(user.token).post('/api/v1/partners/apply').send({ ...body, ...pin });
+    expect(result.status).toBe(400);
+    expect(result.body.error.fields).toHaveProperty('latitude');
+  });
+
   it('rejects travellers with bookings, unverified emails and existing partners', async () => {
     const owner = await createPartner(appwrite);
     const traveler = await createTraveler(appwrite);

@@ -35,6 +35,8 @@ export function toMe(profile: Profile, partner: PartnerProfileRow | null, emailV
           phone: partner.phone,
           address: partner.address,
           city: partner.city,
+          latitude: partner.latitude,
+          longitude: partner.longitude,
           rejectionReason: partner.rejectionReason,
         }
       : null,

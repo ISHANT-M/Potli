@@ -81,6 +81,7 @@ export const listingRoute: RouteDef = {
             <li>${icon('clock')} ${daysLabel(listing.openDays)}, ${hoursLabel(listing.openTime, listing.closeTime)}</li>
             <li>${icon('bag')} Space for up to ${listing.capacity} bags at a time</li>
           </ul>
+          <p id="map-unavailable" class="cx-muted" role="status" hidden>Map background unavailable. Use Get directions to open this location.</p>
           <div id="static-map" class="cx-map cx-map-small" role="img" aria-label="Map showing ${listing.name}"></div>
           <p><a href="${directionsUrl(listing.latitude, listing.longitude)}" target="_blank" rel="noopener noreferrer">Get directions</a></p>
           <h2>Reviews</h2>${reviews}
@@ -96,9 +97,12 @@ export const listingRoute: RouteDef = {
       </div>`,
     );
 
-    void showMap(main.querySelector<HTMLElement>('#static-map')!, [{ id: listing.id, lat: listing.latitude, lng: listing.longitude, label: formatINR(listing.hourlyRatePaise) }], { interactive: false })
+    const mapEl = main.querySelector<HTMLElement>('#static-map')!;
+    const mapWarning = main.querySelector<HTMLElement>('#map-unavailable')!;
+    const mapUnavailable = () => { if (alive) mapWarning.hidden = false; };
+    void showMap(mapEl, [{ id: listing.id, lat: listing.latitude, lng: listing.longitude, label: formatINR(listing.hourlyRatePaise) }], { interactive: false, onUnavailable: mapUnavailable })
       .then((stop) => (alive ? leave.add(stop) : stop()))
-      .catch(() => undefined);
+      .catch(() => { mapEl.hidden = true; mapUnavailable(); });
 
     const startInput = main.querySelector<HTMLInputElement>('#w-start')!;
     const endInput = main.querySelector<HTMLInputElement>('#w-end')!;
