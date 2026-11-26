@@ -102,7 +102,7 @@ function header(): string {
     ? `${me.role === 'traveler' && !me.emailVerified ? '<a class="login-link" href="#/verify-email">Verify your email</a>' : ''}<a class="login-link" href="${homeFor(me)}">${escapeHtml(me.fullName.split(' ')[0] || 'Account')}</a><a class="button button-small" href="${homeFor(me)}">Go to dashboard</a>`
     : `<a class="earn-link" href="#partners">Earn with Potli</a>
       <a class="login-link" href="#/login">Log in</a>
-      <a class="button button-small" href="#search">Find storage</a>`;
+      <a class="button button-small" href="#/search">Find storage</a>`;
   return `<header class="site-header">
     <a class="brand" href="#home" aria-label="Potli home">
       <span class="brand-mark">${icon('logo')}</span><span>potli</span>
@@ -247,17 +247,13 @@ function wireInteractions(): void {
     event.preventDefault();
     const input = document.querySelector<HTMLInputElement>('.search-box input');
     const query = input?.value.trim() ?? '';
-    if (!query) {
-      input?.focus();
-      return;
-    }
     // Start of the booking-flow-time (BFT) measurement.
     try {
       sessionStorage.setItem('potli.searchStartedAt', new Date().toISOString());
     } catch {
       /* storage can be blocked; the measurement is optional */
     }
-    window.location.hash = `#/search?q=${encodeURIComponent(query)}`;
+    window.location.hash = query ? `#/search?q=${encodeURIComponent(query)}` : '#/search';
   });
   const password = document.querySelector<HTMLInputElement>('input[name="password"]');
   document.querySelector<HTMLButtonElement>('.show-password')?.addEventListener('click', (event) => {
