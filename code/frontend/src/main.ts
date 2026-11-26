@@ -11,7 +11,8 @@ import { getMe, homeFor, refreshMe, resetApiToken, setMe, signOut } from './lib/
 import { forbiddenPage, notFoundPage } from './pages/status';
 import { takeAdminIdleFlag } from './portals/admin/idle';
 import { partnerSignUp } from './portals/partner/signup';
-import { mountLocationPicker, type LocationPicker } from './portals/partner/locationPicker';
+import type { LocationPicker } from './portals/partner/locationPicker';
+import { mountSignupLocation, signupLocationFields } from './portals/partner/signupLocation';
 import { routes } from './routes';
 
 
@@ -44,15 +45,11 @@ let signupPickerVersion = 0;
 
 function mountSignupPicker(): void {
   const form = document.querySelector<HTMLFormElement>('#partner-form');
-  const mapEl = document.querySelector<HTMLElement>('#signup-pin-map');
-  if (!form || !mapEl) return;
+  if (!form) return;
   const version = ++signupPickerVersion;
-  void mountLocationPicker(form, mapEl).then((picker) => {
-    if (version !== signupPickerVersion) picker.destroy();
-    else signupPicker = picker;
-  }).catch(() => {
-    const status = form.querySelector<HTMLElement>('[data-location-status]');
-    if (status && version === signupPickerVersion) status.textContent = 'Map unavailable. Enter your business address and city below.';
+  void mountSignupLocation(form).then((picker) => {
+    if (version !== signupPickerVersion) picker?.destroy();
+    else signupPicker = picker ?? null;
   });
 }
 
@@ -213,18 +210,7 @@ function partnerPage(): string {
             <label>Business name<input type="text" name="business" placeholder="Shop, hotel or business name" autocomplete="organization" required /></label>
             <label>Business type<select name="businessType" required><option value="shop">Shop</option><option value="hotel">Hotel</option><option value="cafe">Cafe</option><option value="other">Other</option></select></label>
           </div>
-          <div class="map-field signup-map-field" data-signup-only>
-            <span class="label-text" id="signup-map-label">Find your store on the map</span>
-            <p class="field-hint">Search for a landmark, then tap the map, drag the pin or choose the map centre. We’ll fill the address and city for you.</p>
-            <div class="map-search"><input type="search" data-location-search placeholder="City, street or landmark" aria-label="Search for your store's location" /><button class="button button-secondary button-small" type="button" data-location-find>Find place</button></div>
-            <div id="signup-pin-map" class="pin-map" role="application" aria-labelledby="signup-map-label"></div>
-            <div class="map-actions"><button class="button button-secondary button-small" type="button" data-location-centre>Pin map centre</button><button class="button button-secondary button-small" type="button" data-location-use>Use my current location</button></div>
-            <p class="field-hint" data-location-status role="status">You can also enter the address manually below if the map cannot find it.</p>
-            <input type="hidden" name="latitude" /><input type="hidden" name="longitude" />
-          </div>
-          <label data-signup-only>Business address<input type="text" name="address" placeholder="Street and building (check after selecting a pin)" autocomplete="street-address" maxlength="200" required /></label>
-          <label data-signup-only>City<input type="text" name="city" placeholder="Patiala" autocomplete="address-level2" maxlength="60" required /></label>
-          <p class="field-hint" data-signup-only>The public map pin is saved when you add a listing after your application is approved.</p>
+          <div class="signup-location-fields" data-signup-only>${signupLocationFields()}</div>
           <label>Email address<input type="email" name="email" placeholder="you@business.com" autocomplete="email" required /></label>
           <label data-signup-only>Phone number<input type="tel" name="phone" placeholder="+91 95803 80494" autocomplete="tel" required /></label>
           <label>Password<span class="password-field"><input type="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required /><button type="button" class="show-password">Show</button></span></label>
@@ -277,8 +263,7 @@ function wireInteractions(): void {
 
     document.querySelectorAll<HTMLElement>('[data-signup-only]').forEach((field) => {
       field.classList.toggle('is-hidden', isLogin);
-      field.querySelectorAll<HTMLInputElement>('input').forEach((input) => { if (input.type !== 'hidden' && !input.hasAttribute('data-location-search')) input.required = !isLogin; });
-      if (field instanceof HTMLInputElement) field.required = !isLogin;
+field.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select').forEach((input) => { input.disabled = isLogin; });
     });
     document.querySelectorAll<HTMLElement>('[data-login-only]').forEach((field) => field.classList.toggle('is-hidden', !isLogin));
     const title = document.querySelector<HTMLElement>('.partner-form-title');
@@ -340,7 +325,9 @@ async function handleLogin(event: SubmitEvent): Promise<void> {
     const me = getMe();
     const next = sanitizeNext(parseHash(window.location.hash).query.get('next'));
     window.location.hash =
-      me && !me.emailVerified && me.role !== 'admin' ? '#/verify-email' : (next ?? (me ? homeFor(me) : '#/'));
+      me && !me.emailVerified && me.role !== 'admin'
+        ? `#/verify-email${next ? `?next=${encodeURIComponent(next)}` : ''}`
+        : (next ?? (me ? homeFor(me) : '#/'));
   } catch (err) {
     await account.deleteSession({ sessionId: 'current' }).catch(() => undefined);
     setMe(null);
@@ -520,7 +507,7 @@ async function init(): Promise<void> {
     // a disabled account or an unreachable API reads as signed out
   }
   if (verifyLink) {
-    window.location.hash = '#/verify-email';
+    window.location.hash = verifyLink.partner ? '#/verify-email?next=%23%2Fpartner%2Fapply' : '#/verify-email';
     render();
     return;
   }

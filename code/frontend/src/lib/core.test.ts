@@ -47,7 +47,7 @@ describe('router', () => {
     expect(evaluateGuard({ roles: ['admin'] }, null, '#/admin')).toEqual({ type: 'redirect', to: '#/admin/login?next=%23%2Fadmin' });
     expect(evaluateGuard({ roles: ['admin'] }, traveler, '#/admin')).toEqual({ type: 'forbidden' });
     expect(evaluateGuard({ roles: ['traveler'], verified: true }, me({ emailVerified: false }), '#/app').type).toBe('redirect');
-    const pending = me({ role: 'storage_partner', partner: { status: 'pending', businessName: '', businessType: '', phone: '', address: '', city: '', rejectionReason: null } });
+    const pending = me({ role: 'storage_partner', partner: { status: 'pending', businessName: '', businessType: '', phone: '', address: '', city: '', latitude: null, longitude: null, rejectionReason: null } });
     expect(evaluateGuard({ roles: ['storage_partner'], partnerStatus: ['approved'] }, pending, '#/partner/dashboard')).toEqual({ type: 'redirect', to: '#/partner/application' });
     expect(evaluateGuard({ guestOnly: true }, traveler, '#/login?next=%23%2Fapp%2Fbookings')).toEqual({ type: 'redirect', to: '#/app/bookings' });
     expect(evaluateGuard({ guestOnly: true }, traveler, '#/login?next=https://evil.example')).toEqual({ type: 'redirect', to: '#/app' });

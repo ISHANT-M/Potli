@@ -21,7 +21,16 @@ const fields = {
   address: z.string().trim().min(5, 'Use 5-200 characters.').max(200, 'Use 5-200 characters.'),
   city: z.string().trim().min(2, 'Use 2-60 characters.').max(60, 'Use 2-60 characters.'),
 };
-const applySchemas = { body: z.object(fields) };
+// Legacy clients can omit the pin; if supplied, require both coordinates.
+const applySchemas = {
+  body: z.object({
+    ...fields,
+    latitude: z.number().min(6).max(37).optional(),
+    longitude: z.number().min(68).max(98).optional(),
+  }).refine((v) => (v.latitude === undefined) === (v.longitude === undefined), {
+    path: ['latitude'], message: 'Provide both coordinates for the store pin.',
+  }),
+};
 const patchSchemas = {
   body: z.object(fields).partial().refine((v) => Object.keys(v).length > 0, 'Nothing to update.'),
 };

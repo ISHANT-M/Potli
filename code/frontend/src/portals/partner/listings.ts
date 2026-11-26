@@ -1,5 +1,5 @@
 /** Listings: list, create and edit with a Leaflet pin picker and a live price preview. */
-import type { PartnerListing } from '../../../../shared/types';
+import type { Me, PartnerListing } from '../../../../shared/types';
 import { quote } from '../../../../shared/pricing';
 import { formatClock, formatINR } from '../../lib/format';
 import { clearFieldErrors, readForm, setBusy, setMessage, showFieldErrors } from '../../lib/forms';
@@ -11,6 +11,7 @@ import { ApiRequestError } from '../../lib/api';
 import { alert, badge } from '../../ui/components';
 import { errorText, showPartner } from './shell';
 import { mountLocationPicker } from './locationPicker';
+import { readStorePin } from './signupLocation';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const toPaise = (rupees: string): number => Math.round(Number(rupees) * 100);
@@ -55,7 +56,8 @@ function coverCard(l: PartnerListing) {
     <label>Photo<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" /></label><button class="button button-secondary" type="submit">Upload cover photo</button><p class="form-message" role="status"></p></form>`;
 }
 
-function formView(listing: PartnerListing | null) {
+function formView(listing: PartnerListing | null, signupLocation: Me['partner']) {
+  const location = listing ?? signupLocation;
   const l = listing;
   const days = l?.openDays ?? [0, 1, 2, 3, 4, 5, 6];
   const readOnly = l?.status === 'flagged';
@@ -69,12 +71,15 @@ function formView(listing: PartnerListing | null) {
         <p class="field-hint">Search for a place, then tap the map, drag the pin or choose the map centre. Check the address we fill below.</p>
         <div class="map-search"><input type="search" data-location-search placeholder="City, street or landmark" aria-label="Search for the listing location" /><button class="button button-secondary button-small" type="button" data-location-find>Find place</button></div>
         <div id="pin-map" class="pin-map" role="application" aria-labelledby="listing-map-label"></div>
+        <p class="field-hint" data-basemap-warning role="status" hidden>Map background unavailable. If the saved pin is correct, you can keep it, or enter coordinates below.</p>
         <div class="map-actions"><button class="button button-secondary button-small" type="button" data-location-centre>Pin map centre</button><button class="button button-secondary button-small" type="button" data-location-use>Use my current location</button></div>
-        <p class="field-hint" data-location-status role="status">${l ? 'Move the pin if the location has changed.' : 'Choose a pin to place your listing on the public map.'}</p>
-        <input type="hidden" name="latitude" value="${l?.latitude ?? ''}" /><input type="hidden" name="longitude" value="${l?.longitude ?? ''}" /></div>
-      <label>Address<input type="text" name="address" value="${l?.address ?? ''}" maxlength="200" required /></label>
+        <p class="field-hint" data-location-status role="status">${listing ? 'Move the pin if the location has changed.' : signupLocation ? 'Your signup pin is already selected. Check it before publishing.' : 'Choose a pin to place your listing on the public map.'}</p>
+        <details data-location-coordinates><summary>Enter coordinates instead</summary>
+          <div class="two-col"><label>Latitude<input type="text" inputmode="decimal" name="latitude" value="${location?.latitude ?? ''}" /></label><label>Longitude<input type="text" inputmode="decimal" name="longitude" value="${location?.longitude ?? ''}" /></label></div>
+        </details></div>
+      <label>Address<input type="text" name="address" value="${location?.address ?? ''}" maxlength="200" required /></label>
       <div class="two-col"><label>Area or landmark<input type="text" name="area" value="${l?.area ?? ''}" maxlength="80" /></label>
-      <label>City<input type="text" name="city" value="${l?.city ?? ''}" maxlength="60" required /></label></div>
+      <label>City<input type="text" name="city" value="${location?.city ?? ''}" maxlength="60" required /></label></div>
       <div class="two-col"><label>Capacity (bags)<input type="number" name="capacity" min="1" max="200" step="1" value="${l?.capacity ?? 10}" required /></label>
       <label>Status<select name="status"><option value="active" ${l?.status !== 'paused' ? html`selected` : ''}>Active</option><option value="paused" ${l?.status === 'paused' ? html`selected` : ''}>Paused</option></select></label></div>
       <div class="two-col"><label>Rate per bag per hour (₹)<input type="number" name="hourlyRatePaise" min="10" max="1000" step="1" value="${l ? l.hourlyRatePaise / 100 : 50}" required /></label>
@@ -97,7 +102,9 @@ function formRoute(path: string, title: string): RouteDef {
     async mount(el, ctx) {
       const me = ctx.me;
       if (!me) return;
+      const routeHash = window.location.hash;
       let listing: PartnerListing | null = null;
+      let signupLocation: Me['partner'] = null;
       if (ctx.params.id) {
         try {
           listing = (await api<{ listing: PartnerListing }>('GET', `/partner/listings/${ctx.params.id}`, { auth: 'required' })).listing;
@@ -106,13 +113,24 @@ function formRoute(path: string, title: string): RouteDef {
           return;
         }
       }
+      if (!ctx.params.id && me.partner?.latitude != null && me.partner.longitude != null) {
+        const { items } = await api<{ items: PartnerListing[] }>('GET', '/partner/listings', { auth: 'required' }).catch(() => ({ items: null }));
+        if (items?.length === 0) signupLocation = me.partner;
+      }
+      if (routeHash !== window.location.hash) return;
       const suspended = me.partner?.status === 'suspended';
-      showPartner(el, me, '#/partner/listings', listing ? 'Edit listing' : 'New listing', html`<p><a href="#/partner/listings">Back to listings</a></p>${suspended ? alert('warning', 'Your account is suspended, so listings are read-only.') : ''}${formView(listing)}${listing && listing.status !== 'flagged' && !suspended ? coverCard(listing) : ''}`);
+      showPartner(el, me, '#/partner/listings', listing ? 'Edit listing' : 'New listing', html`<p><a href="#/partner/listings">Back to listings</a></p>${suspended ? alert('warning', 'Your account is suspended, so listings are read-only.') : ''}${formView(listing, signupLocation)}${listing && listing.status !== 'flagged' && !suspended ? coverCard(listing) : ''}`);
       const form = el.querySelector<HTMLFormElement>('#listing-form');
       const mapEl = el.querySelector<HTMLElement>('#pin-map');
       if (!form || !mapEl) return;
       if (suspended) form.querySelector('fieldset')?.setAttribute('disabled', '');
-      const picker = await mountLocationPicker(form, mapEl);
+      const pickerPromise = mountLocationPicker(form, mapEl).catch(() => {
+        mapEl.hidden = true;
+        const warning = form.querySelector<HTMLElement>('[data-basemap-warning]');
+        if (warning) warning.hidden = false;
+        const coords = form.querySelector<HTMLDetailsElement>('[data-location-coordinates]');
+        if (coords) coords.open = true;
+      });
       const cover = el.querySelector<HTMLFormElement>('#cover-form');
       cover?.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -146,10 +164,11 @@ function formRoute(path: string, title: string): RouteDef {
         clearFieldErrors(form);
         const v = readForm(form);
         const openDays = [...form.querySelectorAll<HTMLInputElement>('input[name="day"]:checked')].map((box) => Number(box.value));
-        if (v.latitude === '' || v.longitude === '') return setMessage(form, 'Place the pin on the map first.', 'error');
+        const pin = readStorePin(new FormData(form));
+        if (!pin) return setMessage(form, 'Place the pin on the map or enter valid coordinates in India.', 'error');
         const body = {
           name: v.name, description: v.description ?? '', address: v.address, area: v.area ?? '', city: v.city,
-          latitude: Number(v.latitude), longitude: Number(v.longitude), capacity: Number(v.capacity),
+          ...pin, capacity: Number(v.capacity),
           hourlyRatePaise: toPaise(v.hourlyRatePaise ?? ''), dailyCapPaise: toPaise(v.dailyCapPaise ?? ''),
           openTime: v.openTime, closeTime: v.closeTime, openDays, status: v.status,
         };
@@ -166,7 +185,7 @@ function formRoute(path: string, title: string): RouteDef {
           setBusy(submit, false);
         }
       });
-      return () => picker.destroy();
+      return () => { void pickerPromise.then((picker) => picker?.destroy()); };
     },
   };
 }

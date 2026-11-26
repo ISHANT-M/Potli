@@ -70,7 +70,8 @@ export const searchRoute: RouteDef = {
       </form>
       <div class="cx-toolbar"><p id="count" class="cx-muted" role="status"></p>
         <div class="cx-toggle" role="group" aria-label="View"><button type="button" data-view="list" aria-pressed="${state.view === 'list'}">${icon('list')} List</button><button type="button" data-view="map" aria-pressed="${state.view === 'map'}">${icon('map')} Map</button></div></div>
-      <div id="map" class="cx-map" hidden></div>
+       <p id="map-unavailable" class="cx-muted" role="status" hidden>Map background unavailable. You can still browse the stores below.</p>
+       <div id="map" class="cx-map" hidden></div>
       <div id="results">${skeleton()}</div>`,
     );
 
@@ -82,6 +83,8 @@ export const searchRoute: RouteDef = {
     let bags = state.bags;
     let items: ListingSummary[] = [];
     let destroyMap: (() => void) | null = null;
+    let viewVersion = 0;
+    const mapWarning = main.querySelector<HTMLElement>('#map-unavailable')!;
     leave.add(() => destroyMap?.());
 
     const windowQuery = (s: State) => ({ start: s.start, end: s.end, bags: s.bags });
@@ -146,6 +149,8 @@ export const searchRoute: RouteDef = {
 
     async function applyView(): Promise<void> {
       main.querySelectorAll<HTMLElement>('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
+      const version = ++viewVersion;
+      mapWarning.hidden = true;
       mapEl.hidden = state.view !== 'map';
       destroyMap?.();
       destroyMap = null;
@@ -154,13 +159,18 @@ export const searchRoute: RouteDef = {
           const stop = await showMap(
             mapEl,
             items.map((i) => ({ id: i.id, lat: i.latitude, lng: i.longitude, label: formatINR(i.hourlyRatePaise) })),
-            { onSelect: select },
+            {
+              onSelect: select,
+              isCurrent: () => alive && version === viewVersion,
+              onUnavailable: () => { if (alive && version === viewVersion) mapWarning.hidden = false; },
+            },
           );
-          if (alive && state.view === 'map') destroyMap = stop;
+          if (alive && version === viewVersion) destroyMap = stop;
           else stop();
         } catch {
+          if (!alive || version !== viewVersion) return;
           mapEl.hidden = true;
-          mount(mapEl, html``);
+          mapWarning.hidden = false;
         }
       } else if (state.view === 'map') {
         mapEl.hidden = true;

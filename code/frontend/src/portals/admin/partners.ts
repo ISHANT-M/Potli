@@ -97,7 +97,14 @@ export const partnerDetailRoute = adminRoute('/admin/partners/:id', 'Partner', a
       const mapEl = el.querySelector<HTMLElement>('#mini-map');
       if (mapEl && listings.length) {
         map = L.map(mapEl, { scrollWheelZoom: false });
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+        const listingMap = map;
+        const unavailable = () => {
+          if (!mapEl.isConnected || map !== listingMap) return;
+          mapEl.setAttribute('aria-label', 'Map background unavailable. Listing addresses are below.');
+        };
+        void import('../../lib/basemap').then(({ addBasemap }) => {
+          if (mapEl.isConnected && map === listingMap) addBasemap(listingMap, unavailable);
+        }).catch(unavailable);
         const points = listings.map((l) => L.latLng(l.latitude, l.longitude));
         listings.forEach((l, i) => L.circleMarker(points[i]!, { radius: 8, color: '#1e3a5f', fillColor: '#0f766e', fillOpacity: 0.9 }).bindTooltip(l.name).addTo(map!));
         map.fitBounds(L.latLngBounds(points).pad(0.3), { maxZoom: 15 });

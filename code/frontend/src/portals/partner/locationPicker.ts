@@ -7,7 +7,7 @@ export interface LocationPicker {
 }
 
 export async function mountLocationPicker(form: HTMLFormElement, mapEl: HTMLElement): Promise<LocationPicker> {
-  const [{ default: L }] = await Promise.all([import('leaflet'), import('leaflet/dist/leaflet.css')]);
+  const [{ default: L }, { addBasemap }] = await Promise.all([import('leaflet'), import('../../lib/basemap'), import('leaflet/dist/leaflet.css')]);
   if (!mapEl.isConnected) return { destroy() {}, refresh() {} };
 
   const field = mapEl.closest<HTMLElement>('.map-field');
@@ -24,7 +24,10 @@ export async function mountLocationPicker(form: HTMLFormElement, mapEl: HTMLElem
   const disabled = () => Boolean(mapEl.closest('fieldset:disabled'));
   const hasPin = lat.value !== '' && lng.value !== '' && inIndia(Number(lat.value), Number(lng.value));
   const map = L.map(mapEl).setView(hasPin ? [Number(lat.value), Number(lng.value)] : [22.9, 79], hasPin ? 16 : 5);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  addBasemap(map, () => {
+    const warning = field?.querySelector<HTMLElement>('[data-basemap-warning]');
+    if (warning) warning.hidden = false;
+  });
   const pin = L.divIcon({ className: 'map-pin', html: '<span></span>', iconSize: [28, 28], iconAnchor: [14, 28] });
   let marker: L.Marker | null = null;
   let request: AbortController | null = null;
@@ -41,7 +44,13 @@ export async function mountLocationPicker(form: HTMLFormElement, mapEl: HTMLElem
     lng.value = point.lng.toFixed(6);
     if (!marker) {
       marker = L.marker(point, { draggable: !disabled(), icon: pin }).addTo(map);
-      marker.on('dragend', () => select(marker!.getLatLng()));
+      marker.on('dragend', () => {
+        const position = marker!.getLatLng();
+        if (!inIndia(position.lat, position.lng)) {
+          marker!.setLatLng([Number(lat.value), Number(lng.value)]);
+          say('Choose a location in India.');
+        } else select(position);
+      });
     } else marker.setLatLng(point);
     if (pan) map.setView(point, 16);
     if (!lookup) return say(`Pin set at ${lat.value}, ${lng.value}.`);
@@ -63,6 +72,19 @@ export async function mountLocationPicker(form: HTMLFormElement, mapEl: HTMLElem
   };
 
   if (hasPin) select(L.latLng(Number(lat.value), Number(lng.value)), false, false);
+  const syncCoordinates = () => {
+    request?.abort();
+    ++version;
+    const point = L.latLng(Number(lat.value) || 0, Number(lng.value) || 0);
+    if (inIndia(point.lat, point.lng)) select(point, true, false);
+    else {
+      marker?.remove();
+      marker = null;
+      say('Enter both coordinates for a location in India.');
+    }
+  };
+  lat.addEventListener('change', syncCoordinates);
+  lng.addEventListener('change', syncCoordinates);
   map.on('click', (e: L.LeafletMouseEvent) => select(e.latlng));
   const findPlace = async (): Promise<void> => {
     const query = search?.value.trim() ?? '';

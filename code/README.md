@@ -34,6 +34,12 @@ supply the connection string.
 | `--skip-db` | install dependencies only |
 | `--only <list>` | subset of `frontend`, `backend`, `db` |
 
+### Map hosting
+
+The frontend uses OpenFreeMap's Liberty style by default, rather than the restricted public `tile.openstreetmap.org` raster server. Set `VITE_MAP_STYLE_URL` before building to use another compatible HTTPS MapLibre style (for example, a self-hosted style). It is public browser configuration, not a secret. Keep source attribution in the style. A restrictive Content Security Policy must allow the style, its tiles, sprites and glyphs on the provider's origin and the same-origin MapLibre worker. Public place search and address autofill use Nominatim as a convenience; coordinates and address can also be entered manually.
+
+To roll out the partner signup pin to an existing installation, apply the normal database migrations (including `0002_partner_store_pin.sql`) to the deployment database before restarting the API, then rebuild and serve the new `frontend/dist`. Existing partner profiles and listing locations are preserved.
+
 ### Appwrite + Postgres
 
 One PostgreSQL container serves both Appwrite and Potli. Appwrite owns the

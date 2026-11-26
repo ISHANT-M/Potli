@@ -43,6 +43,8 @@ export interface Me {
     phone: string;
     address: string;
     city: string;
+    latitude: number | null;
+    longitude: number | null;
     rejectionReason: string | null;
   };
 }
