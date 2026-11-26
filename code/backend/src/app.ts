@@ -43,7 +43,7 @@ export function createApp(input: AppInput): Express {
   });
   // The API serves JSON and private images, so a content security policy adds nothing here.
   // Images are fetched cross-origin by the frontend, hence the relaxed resource policy.
-  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' }, referrerPolicy: { policy: 'strict-origin-when-cross-origin' } }));
   app.use(
     cors({
       origin: config.corsOrigins,
