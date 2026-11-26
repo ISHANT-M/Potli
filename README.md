@@ -4,7 +4,7 @@
 
 ### On-demand luggage storage, powered by trusted local businesses
 
-[![Project status](https://img.shields.io/badge/status-planning-1b4d27?style=for-the-badge)](#project-status)
+[![Project status](https://img.shields.io/badge/status-implemented-1b4d27?style=for-the-badge)](#project-status)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0b5cab?style=for-the-badge)](LICENSE)
 
 </div>
@@ -152,7 +152,7 @@ Supporting measures include:
 
 ## Project status
 
-POTLI is under active development. The proposal, system scope, use cases, and development schedule are in this repository, and the application lives in [`code/`](code/README.md).
+POTLI’s core luggage storage workflows are implemented. The proposal, system scope, use cases, and development schedule are in this repository, and the application lives in [`code/`](code/README.md).
 
 **Implemented**
 
