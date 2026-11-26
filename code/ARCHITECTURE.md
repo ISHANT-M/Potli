@@ -2,12 +2,12 @@
 
 ## What is running
 
-Potli is a TypeScript frontend and API backed by a self-hosted Appwrite project and PostgreSQL. **The Potli frontend and API currently run on developers' machines, not as deployed homelab services.** The homelab hosts Appwrite, its PostgreSQL server, the database catcher, and the mail integration. A frontend build is not a deployment.
+Potli is a TypeScript frontend and API backed by a self-hosted Appwrite project and PostgreSQL. The frontend and API run together on their own homelab LXC; developers can also run them locally. The Appwrite LXC hosts auth, PostgreSQL, the database catcher and mail integration.
 
 | Component | Responsibility | Location |
 | --- | --- | --- |
-| `frontend/` | Vite app, Appwrite browser session, role-specific pages | Local dev server on `localhost:5173` |
-| `backend/` | Express API; verifies Appwrite JWTs and reads/writes profiles | Local dev server on `localhost:4000` |
+| `frontend/` | Vite app, Appwrite browser session, role-specific pages | Built assets served by the Potli API; local dev server on `localhost:5173` |
+| `backend/` | Express API; verifies Appwrite JWTs and reads/writes profiles | Potli LXC; local dev server on `localhost:4000` |
 | `db/` | Drizzle schema, Postgres client, SQL migrations and dev seed | Shared by the backend and scripts |
 | Appwrite | Potli project: users, passwords, sessions, role labels, recovery mail | Self-hosted Appwrite stack |
 | PostgreSQL | Separate `appwrite` and `potli` databases **in the same Appwrite PostgreSQL container** | Internal Docker network; no published Postgres port |
@@ -44,7 +44,7 @@ To provision an equivalent environment:
 
 For later schema changes, edit `db/schema.ts`, then run `cd db && npm run generate -- --name <change>` and `npm run migrate`. Generated SQL lives in `db/migrations/`; the migration script records applied filenames in the `migrations` table of the `potli` database in the same transaction. Do not use `drizzle-kit push`. `npm run typecheck` checks every workspace; `npm run build` builds frontend assets but does not host them.
 
-**Not deployed yet:** There is no Potli API service, static frontend host, or public Potli hostname in the homelab deployment. Production deployment would need a backend service with private database reachability and configuration, a static host for `frontend/dist`, `VITE_API_URL` pointing at that API at build time, corresponding browser origins in Appwrite, gateway/tunnel routes, and health/backup/recovery procedures. Do not treat the current local `localhost` URLs as production endpoints. Auth/login, profile lookup and recovery are implemented; storage listings, booking flows and operational dashboards are not backed by those APIs yet.
+**Live deployment:** `code/Dockerfile` builds the frontend and runs the API as one service, serving the frontend from Express in production. The private homelab workspace has `deploy/host/make-potli-ct.sh` and `deploy/potli/` for CT 206, separate from Appwrite CT 204. The API reaches the existing `potli` database through the Appwrite-JWT WebSocket catcher. The gateway routes the public app hostname to CT 206, and the Appwrite project allows that web origin. Production uses the app origin for API requests; do not treat `localhost` dev URLs as deployment endpoints. Deploy with `deploy/potli/deploy.sh` and the private guest env; never run the dev seed on live accounts because it resets passwords.
 
 ## Where to look
 
