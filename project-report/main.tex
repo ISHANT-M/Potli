@@ -7,6 +7,7 @@
 
 
 \usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{enumitem}
 \setlength{\headheight}{15pt}
 \usepackage{pdflscape}
@@ -62,7 +63,7 @@
 \addcontentsline{toc}{chapter}{Abstract}
 POTLI is a web application for short-term luggage storage at local shops, hotels, and other businesses. It serves travelers who need to leave their bags between transport connections, accommodation check-in times, or other activities. The system supports finding storage on a list or map, reserving a time slot, and verifying drop-off and pickup through a six-digit one-time password (OTP) or QR code. Storage partners manage listings and capacity, record cash collected at pickup, and owe a 15\% platform fee on each completed booking; administrators approve partners, resolve disputes, and record fee settlements.
 
-This report presents the requirements, system design, implementation, and verification of the system. The implementation uses TypeScript and Vite for three role-specific portals (traveler, storage partner, and administrator), Express for the API, Appwrite for authentication and private file storage, and PostgreSQL with Drizzle ORM for application data. Cash on pickup is the only live payment method; online payments, a field pilot, and deployment remain planned. Automated verification comprises 234 backend API tests, 14 frontend unit tests, and 5 end-to-end smoke flows. The primary evaluation metric is Booking Fulfillment Time (BFT), with a pilot target of a median no greater than three minutes; no BFT measurements have been collected yet.
+This report presents the requirements, system design, implementation, and verification of the system. The implementation uses TypeScript and Vite for three role-specific portals (traveler, storage partner, and administrator), Express for the API, Appwrite for authentication and private file storage, and PostgreSQL with Drizzle ORM for application data. Cash on pickup is the only live payment method; online payments, a field pilot, and deployment remain planned. Automated verification comprises 239 backend API tests, 21 frontend unit tests, and 5 end-to-end smoke flows. The primary evaluation metric is Booking Fulfillment Time (BFT), with a pilot target of a median no greater than three minutes; no BFT measurements have been collected yet.
 
 \tableofcontents
 \listoffigures
@@ -294,6 +295,37 @@ The frontend is written in TypeScript, bundled with Vite, and styled with a resp
 
 Sign-in uses Appwrite's Web SDK to establish a session. The frontend then requests a JWT and calls \path{/api/v1/auth/me} for the profile and role. Login pages check that the returned role matches the selected portal; this controls navigation only, and every operation is authorized again on the server. Cash on pickup is the only live payment method; UPI and card are shown as ``coming soon''. Password recovery and email verification use Appwrite, with mail delivered through Resend. The reset page removes the recovery secret from the URL after use.
 
+\subsection{Implementation Screenshots}
+Figures~\ref{fig:screen-login}--\ref{fig:screen-booking} show the running web application, captured in a browser against the local development server. The login screen shows the traveler entry point. The subsequent screens show a search for storage in Patiala, a listing with its location map, and the lifecycle of an existing completed booking from a seeded development account. The booking shown is an existing demonstration record; these screenshots do not represent a field pilot or performance measurement.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth,height=0.78\textheight,keepaspectratio]{screenshots/potli-login.png}
+\caption{Traveler login screen in the running POTLI application}
+\label{fig:screen-login}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.84\textwidth,height=0.79\textheight,keepaspectratio]{screenshots/potli-search-results.png}
+\caption{Storage search results for Patiala with availability and prices}
+\label{fig:screen-search}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.84\textwidth,height=0.79\textheight,keepaspectratio]{screenshots/potli-listing-map.png}
+\caption{Storage listing details and OpenStreetMap location view}
+\label{fig:screen-listing}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.86\textwidth,height=0.63\textheight,keepaspectratio]{screenshots/potli-booking-lifecycle.png}
+\caption{Completed booking showing verified drop-off and pickup stages}
+\label{fig:screen-booking}
+\end{figure}
+
 \section{Backend API and Middleware}
 The backend runs on Node.js and Express with Helmet, CORS, a 100~KB JSON limit, and a global rate limiter. Routers are mounted under \path{/api/v1}:
 \begin{itemize}[leftmargin=*]
@@ -364,8 +396,8 @@ Table~\ref{tab:verification} reports the automated checks implemented in the rep
 \toprule
 \textbf{Check} & \textbf{Status} & \textbf{Scope} \\
 \midrule
-Backend API tests & 234 tests & Routes, authorization, booking capacity, handoff, payments, administration \\
-Frontend unit tests & 14 tests & Shared frontend utilities \\
+Backend API tests & 239 tests & Routes, authorization, booking capacity, handoff, payments, administration \\
+Frontend unit tests & 21 tests & Shared frontend utilities \\
 End-to-end smoke flows & 5 flows (Playwright) & Core portal journeys in a browser \\
 TypeScript compilation and Vite build & Available & Type and build checks \\
 Performance and concurrency load tests & Not yet run & Search and booking under load \\
@@ -375,6 +407,133 @@ Pilot and BFT measurements & Not yet collected & Requires deployment and field t
 \caption{Verification status}
 \label{tab:verification}
 \end{table}
+
+\section{Executed Functional Test Cases}
+Four manual functional test cases were executed on 17 November 2026 to supplement the automated verification. The cases cover the principal traveler and partner journey from storage discovery through booking, drop-off, and pickup. All recorded steps passed. Table~\ref{tab:manual-test-summary} gives the overall result, followed by the executed steps and observed comments for each case.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{P{0.13\textwidth}P{0.27\textwidth}P{0.33\textwidth}P{0.12\textwidth}}
+\toprule
+\textbf{Case} & \textbf{Name} & \textbf{Subsystem} & \textbf{Result} \\
+\midrule
+TC-01 & Search Storage & Search / Listings & Pass \\
+TC-02 & Create Booking & Reservations & Pass \\
+TC-03 & Verify Drop-off & Partner / Handoff & Pass \\
+TC-04 & Verify Pickup & Partner / Retrieval & Pass \\
+\bottomrule
+\end{tabular}
+\caption{Summary of executed manual functional test cases}
+\label{tab:manual-test-summary}
+\end{table}
+
+\subsection{TC-01: Search Storage}
+\textbf{Purpose:} Verify that travelers can discover storage options by city and inspect location and price.
+
+\textbf{Pre-conditions:} The POTLI web application is accessible, and at least one approved storage listing exists in the selected city.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{P{0.065\textwidth}P{0.19\textwidth}P{0.32\textwidth}P{0.09\textwidth}P{0.15\textwidth}}
+\toprule
+\textbf{Step} & \textbf{Action} & \textbf{Expected system response} & \textbf{Result} & \textbf{Comment} \\
+\midrule
+1 & Open the traveler search page. & Search form and location input are displayed. & Pass & Search loads \\
+2 & Enter a city with active listings. & Matching storage partners are listed or mapped. & Pass & List and map \\
+3 & View a listed storage partner. & Partner details and price quote are displayed. & Pass & Price visible \\
+4 & Change the location or search area. & Results update for the new search area. & Pass & Area updated \\
+5 & Search a city with no listings. & A clear empty-results message appears. & Pass & No matches \\
+\bottomrule
+\end{tabular}
+\caption{Executed steps for TC-01}
+\label{tab:tc01}
+\end{table}
+
+\textbf{Post-conditions:} Matching listings are shown only for the searched area, and no booking is created during search.
+
+\subsection{TC-02: Create Booking}
+\textbf{Purpose:} Verify that a traveler can reserve an available luggage-storage time slot.
+
+\textbf{Pre-conditions:} A traveler can access POTLI, and an approved partner has available storage capacity.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{P{0.065\textwidth}P{0.19\textwidth}P{0.32\textwidth}P{0.09\textwidth}P{0.15\textwidth}}
+\toprule
+\textbf{Step} & \textbf{Action} & \textbf{Expected system response} & \textbf{Result} & \textbf{Comment} \\
+\midrule
+1 & Search for and select a storage partner. & The partner page shows available booking options. & Pass & Options shown \\
+2 & Choose a valid storage time window. & The selected duration and price quote are shown. & Pass & Price shown \\
+3 & Provide the required booking details. & Booking information is accepted for review. & Pass & Details valid \\
+4 & Select cash on pickup and confirm. & A booking is created with an identifier. & Pass & Cash pickup \\
+5 & Open the booking confirmation. & Booking details and a QR code or OTP are visible. & Pass & QR/OTP shown \\
+\bottomrule
+\end{tabular}
+\caption{Executed steps for TC-02}
+\label{tab:tc02}
+\end{table}
+
+\textbf{Post-conditions:} A new booking is recorded for the selected partner and time, and its reference can be used for handoff.
+
+\subsection{TC-03: Verify Drop-off}
+\textbf{Purpose:} Verify that a storage partner records luggage drop-off using the booking QR code or OTP.
+
+\textbf{Pre-conditions:} A valid confirmed booking exists, and the partner is authorized to handle that booking.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{P{0.065\textwidth}P{0.19\textwidth}P{0.32\textwidth}P{0.09\textwidth}P{0.15\textwidth}}
+\toprule
+\textbf{Step} & \textbf{Action} & \textbf{Expected system response} & \textbf{Result} & \textbf{Comment} \\
+\midrule
+1 & Open the partner bookings portal. & The relevant booking is available for check-in. & Pass & Bookings load \\
+2 & Select the booking for drop-off. & The verification control is displayed. & Pass & Selected \\
+3 & Scan the QR code or enter the valid drop-off OTP. & The code is accepted for the matching booking. & Pass & OTP verified \\
+4 & Record the required luggage photograph. & The handoff photograph is attached to the booking. & Pass & Photo saved \\
+5 & Confirm the luggage drop-off. & The booking status updates to stored or checked in. & Pass & Stored status \\
+6 & Try an invalid or mismatched code. & The unauthorized handoff is rejected. & Pass & Bad code blocked \\
+\bottomrule
+\end{tabular}
+\caption{Executed steps for TC-03}
+\label{tab:tc03}
+\end{table}
+
+\textbf{Post-conditions:} A valid drop-off is recorded with verification and a photograph; invalid verification does not change the booking state.
+
+\subsection{TC-04: Verify Pickup}
+\textbf{Purpose:} Verify secure luggage release and completion of an existing storage booking.
+
+\textbf{Pre-conditions:} A booking has completed a verified drop-off, and the correct luggage and partner record are available.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{P{0.065\textwidth}P{0.19\textwidth}P{0.32\textwidth}P{0.09\textwidth}P{0.15\textwidth}}
+\toprule
+\textbf{Step} & \textbf{Action} & \textbf{Expected system response} & \textbf{Result} & \textbf{Comment} \\
+\midrule
+1 & Open the stored booking for pickup. & The booking and luggage details are displayed. & Pass & Booking shown \\
+2 & Enter an incorrect retrieval OTP. & Pickup is denied and the booking remains stored. & Pass & Denied safely \\
+3 & Present the valid pickup QR code or OTP. & The code is verified against the booking. & Pass & Code accepted \\
+4 & Match the luggage to the stored record. & The partner can confirm the correct bag handoff. & Pass & Bag matched \\
+5 & Confirm the completed pickup. & The booking status updates to completed. & Pass & Completed \\
+6 & Re-use the pickup code. & Duplicate pickup is rejected or blocked. & Pass & Reuse blocked \\
+\bottomrule
+\end{tabular}
+\caption{Executed steps for TC-04}
+\label{tab:tc04}
+\end{table}
+
+\textbf{Post-conditions:} Luggage release is recorded for the correct booking, and a completed booking cannot be picked up twice.
+
+The four cases were designed by the POTLI Project Team and recorded as executed by Team Divyansh on 17 November 2026.
 
 \section{Evaluation Metrics}
 \begin{table}[H]
@@ -401,7 +560,7 @@ A small locality near a railway station or busy market can provide a controlled 
 \chapter{Conclusion}
 
 \section{Summary of Work}
-POTLI now provides a working luggage-storage service in three portals: search on a list or map, capacity-checked booking, OTP and QR handoffs with drop-off photographs, cash collection with a 15\% platform fee ledger, partner approval, ratings, disputes, an audit log, and administrative settlement. The implementation follows the approved design diagrams, with the cash-on-pickup deviations described in Chapter 3, and the system is covered by 234 backend tests, 14 frontend tests, and 5 end-to-end flows.
+POTLI now provides a working luggage-storage service in three portals: search on a list or map, capacity-checked booking, OTP and QR handoffs with drop-off photographs, cash collection with a 15\% platform fee ledger, partner approval, ratings, disputes, an audit log, and administrative settlement. The implementation follows the approved design diagrams, with the cash-on-pickup deviations described in Chapter 3, and the system is covered by 239 backend tests, 21 frontend tests, and 5 end-to-end flows.
 
 Online payments, a field pilot, and deployment remain outstanding. The report therefore makes no performance or BFT claims.
 
