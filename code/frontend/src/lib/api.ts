@@ -1,7 +1,7 @@
 /** Typed API client: Bearer JWT from the Appwrite session, error envelope parsing, one retry on 401. */
 import type { ApiError } from '../../../shared/types';
 
-export const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+export const API_BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? window.location.origin : 'http://localhost:4000');
 const JWT_MAX_AGE_MS = 10 * 60_000;
 
 export class ApiRequestError extends Error {

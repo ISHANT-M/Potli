@@ -3,6 +3,7 @@ import cors from 'cors';
 import { randomUUID } from 'node:crypto';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
+import { fileURLToPath } from 'node:url';
 import type { Database } from '../../db/client.ts';
 import type { AppwriteAdapter } from './appwrite.ts';
 import type { Config } from './config.ts';
@@ -62,6 +63,10 @@ export function createApp(input: AppInput): Express {
   v1.use(partnerRouter(deps));
   v1.use(adminRouter(deps));
   app.use('/api/v1', v1);
+
+  if (config.nodeEnv === 'production') {
+    app.use(express.static(fileURLToPath(new URL('../../frontend/dist/', import.meta.url))));
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler(config));

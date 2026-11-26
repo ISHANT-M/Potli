@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/*.test.ts
+**/test
+**/tests
+**/migrations
+.git
+.pi
+coverage
+playwright-report
