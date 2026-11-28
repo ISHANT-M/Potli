@@ -1,0 +1,23 @@
+name: Deploy through Komodo
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger checked Potli updater
+        env:
+          KOMODO_URL: ${{ vars.KOMODO_URL }}
+          KOMODO_WEBHOOK_SECRET: ${{ secrets.KOMODO_WEBHOOK_SECRET }}
+          PUSH_REF: ${{ github.ref }}
+        run: |
+          test -n "$KOMODO_URL" && test -n "$KOMODO_WEBHOOK_SECRET"
+          body=$(printf '{"ref":"%s"}' "$PUSH_REF")
+          signature=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$KOMODO_WEBHOOK_SECRET" -hex | cut -d ' ' -f 2)
+          curl --fail-with-body --retry 3 --retry-all-errors \
+            -H 'Content-Type: application/json' \
+            -H "X-Hub-Signature-256: sha256=$signature" \
+            --data "$body" "$KOMODO_URL/listener/github/action/potli-update/main"
